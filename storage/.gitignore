@@ -1,0 +1,7 @@
+*
+!.gitignore
+!langs
+!langs/*.json
+!config
+!config/*.example.*
+!config/*.local.*

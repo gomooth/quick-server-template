@@ -1,0 +1,164 @@
+[server]
+    # HTTP 服务
+    [server.http]
+    # 服务监听地址和端口
+    addr = "0.0.0.0:8000"
+    # 服务域名
+    host = ""
+        # HTTP 静态资源：上传等
+        [server.http.resource]
+        # 资源域名
+        host = "https://res.domain.com"
+        # 资源上传目录。该目录为 host 的根目录，相对于项目根目录，或者使用绝对路径
+        path = "storage/public"
+
+        # HTTP 缓存
+        [server.http.cache]
+        enabled = false
+        addr    = "127.0.0.1:6379"
+        auth    = ""
+        db      = 4
+
+    # OpenAPI 服务
+    [server.openapi]
+    # 服务监听地址和端口
+    addr = "0.0.0.0:8001"
+    # 服务域名
+    host = ""
+        # OpenAPI HTTP 缓存
+        [server.openapi.cache]
+        enabled = false
+        addr    = "127.0.0.1:6379"
+        auth    = ""
+        db      = 4
+
+
+# 消息消费者
+[consumer]
+    [consumer.kafka]
+    addrs   = ["127.0.0.1:9092"]
+
+    [consumer.redis]
+    addr    = "127.0.0.1:6379"
+    auth    = ""
+    db      = 3
+
+    [consumer.httpsqs]
+    addr    = "127.0.0.1:1218"
+    auth    = ""
+    timeout = 10
+
+
+[app]
+# 服务标识
+id = "server-api"
+# 服务名
+name = "应用名"
+# app 环境
+env = "local"
+# 是否自动删除样例文件
+clear_example_file = true
+# 启动后是否自动删除配置文件
+clear_config_file = false
+# 监听配置文件变更，自动更新配置
+watch_config_enabled = false
+# 密钥：jwt 认证等
+secret = "go-quick-server-template"
+    # 管理后台配置
+    [app.admin]
+    # 初始帐号
+    account = "admin"
+    # 初始密码
+    password = "123456"
+
+    [app.log]
+    # 日志目录
+    dir = "storage/logs"
+    # 日志等级
+    level = "info"
+    # 日志格式：text-文本(默认)，json-JSON(普遍应用于云服务器)
+    format = ""
+    # 是否输出到控制台
+    std_print = false
+    # 是否打印 http 日志
+    http_log = true
+    # 是否仅打印 http 错误日志
+    http_log_only_error = true
+
+
+[data]
+    # 持久存储
+    [data.persistent]
+    enabled = true
+    # 是否自动迁移基础表
+    auto_migrate = true
+        [[data.persistent.connects]]
+        name        = "platform"
+        type        = "mysql"
+        dsn         = "user:password@tcp(ip:prot)/database?charset=utf8mb4&parseTime=true&loc=Local"
+        max_idle    = 10
+        max_open    = 100
+        log_mode    = true
+        max_life_time = 30
+
+        [[data.persistent.connects]]
+        name        = "localPlatform"
+        type        = "sqlit"
+        dsn         = "config/main.db?charset=utf8mb4&parseTime=true&loc=Local"
+        max_idle    = 10
+        max_open    = 100
+        log_mode    = true
+        max_life_time = 30
+
+    # 内存数据库 Redis
+    [data.redis]
+    enabled = true
+    addr    = "127.0.0.1:6379"
+    auth    = ""
+    db      = 0
+    idle    = 100
+    active  = 10
+    wait    = true
+    connect_timeout = 3000
+
+    [data.elasticsearch]
+    enabled = false
+    urls = ["http://127.0.0.1:9200"]
+    sniff_enabled = false
+    debug_enabled = true
+        [data.elasticsearch.index]
+        key = ""
+
+    # 缓存
+    [data.cache]
+    enabled = true
+    engine = "redis"
+        [data.cache.redis]
+        addr    = "127.0.0.1:6379"
+        auth    = ""
+        db      = 4
+
+    # 分布式锁
+    [data.locker]
+    enabled = false
+    engine = "redis"
+        [data.locker.redis]
+        addr    = "127.0.0.1:6379"
+        auth    = ""
+        db      = 3
+
+
+# 消息生产者
+[producer]
+    [producer.kafka]
+    addrs   = ["127.0.0.1:9092"]
+
+    [producer.redis]
+    addr    = "127.0.0.1:6379"
+    auth    = ""
+    db      = 3
+
+    [producer.httpsqs]
+    addr    = "127.0.0.1:1218"
+    auth    = ""
+    timeout = 10

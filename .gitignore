@@ -16,9 +16,9 @@
 # vendor/
 
 ### Project
+.dist
+.*.dist
 main
-config/*
-!config/*.example.*
 !main.go
 server-api*
 logs
