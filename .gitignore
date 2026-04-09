@@ -25,3 +25,11 @@ logs
 app/**/storage
 
 .idea
+
+.claude/*.local.json
+.claude/docs
+.claude/worktrees
+.superpowers
+docs/superpowers
+
+mooth
