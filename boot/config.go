@@ -13,13 +13,15 @@ type Param struct {
 
 func (m Param) LogCategory() string {
 	if len(m.RegisterServers) > 1 {
-		return ""
+		return "all"
 	}
 	if m.CMDParam != nil {
 		return "command"
 	}
 
 	switch m.RegisterServers[0] {
+	case InitServerTypeWeb:
+		return "default"
 	case InitServerTypeOpenAPI:
 		return "openapi"
 	case InitServerTypeCronjob:
@@ -27,7 +29,7 @@ func (m Param) LogCategory() string {
 	case InitServerTypeConsumer:
 		return "consumer"
 	default:
-		return ""
+		return "default"
 	}
 }
 

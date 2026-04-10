@@ -24,3 +24,7 @@ func New(cnf LogConfig, category string) xlog.XLogger {
 		logger.WithLevelString(cnf.Level),
 	)
 }
+
+func ActiveSlog(l xlog.XLogger) {
+	logger.InitSlog(l)
+}
