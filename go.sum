@@ -91,8 +91,8 @@ github.com/gomooth/httpsqs v0.1.1 h1:eQTm7bbG+ZkbmtlBT/1Ht+yi5kBaUcs6ajVf/4b4YZk
 github.com/gomooth/httpsqs v0.1.1/go.mod h1:ryW5A5/pu1ed14VC0C86ah/2Z8Q/YvT2Wd7AGhNnz5k=
 github.com/gomooth/locker v0.1.1 h1:DK1EnvXjLJ31StcKRGyf9xdLMIoADrNtHU1MnqhuALI=
 github.com/gomooth/locker v0.1.1/go.mod h1:YtBMDOvJ2kTrJssv59YhUZX02C9nlTfRkQXqyXQtH28=
-github.com/gomooth/pkg v0.1.4 h1:np9qCWmhXzrdvVxYFXonB3FyeHg7FHJxr3wkXYHtDaQ=
-github.com/gomooth/pkg v0.1.4/go.mod h1:hBP6XqV3Nn+3I5RufXb+vixzpC7inzxIh4kvt/gJ+8Y=
+github.com/gomooth/pkg v0.1.7 h1:nWFZgJcjLFLmeURHhZ3b4fXZHT62aidf4ETWcuSLSlo=
+github.com/gomooth/pkg v0.1.7/go.mod h1:hBP6XqV3Nn+3I5RufXb+vixzpC7inzxIh4kvt/gJ+8Y=
 github.com/gomooth/utils v0.1.0 h1:w2oPTPdbW+tN9ysgExX90fm3P/qfF6C194FAIQYy3dM=
 github.com/gomooth/utils v0.1.0/go.mod h1:xcg5TVC4yYbi3chrPGfgjrkbosC0gns6yURo0o7lS5U=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=

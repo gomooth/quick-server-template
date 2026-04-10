@@ -7,7 +7,7 @@ import (
 	"server-api/repository/platform/dao"
 	"server-api/repository/types/platformfilter"
 
-	"github.com/gomooth/pkg/framework/dbquery"
+	"github.com/gomooth/pkg/framework/dbfilter"
 	"github.com/gomooth/utils/userutil"
 
 	"github.com/save95/xerror"
@@ -20,11 +20,12 @@ type service struct {
 }
 
 func (s *service) Paginate(ctx context.Context, in *paginateRequest) ([]*entity, uint, error) {
-	records, total, err := dao.NewVWUser(ctx).Paginate(in.Start, in.Limit, dbquery.New[platformfilter.User](
-		&platformfilter.User{
+	records, total, err := dao.NewVWUser().Paginate(ctx, in.Start, in.Limit, dbfilter.New(
+		platformfilter.User{
 			Account: in.Account,
 		},
-		dbquery.WithSorts(in.Sort)))
+		dbfilter.WithSorts(in.Sort)),
+	)
 	if nil != err {
 		return nil, 0, err
 	}
@@ -43,7 +44,7 @@ func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error
 	}
 
 	// 判断重复
-	_, err := dao.NewVWUser(ctx).FirstByAccount(in.Account)
+	_, err := dao.NewVWUser().FirstByAccount(ctx, in.Account)
 	if nil == err || !xerror.IsXCode(err, xcode.DBRecordNotFound) {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorRecordExist)
 	}
@@ -61,7 +62,7 @@ func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error
 		State:     1,
 	}
 	stat := platform.UserStat{}
-	if err := dao.NewUser(ctx).Create(in.GetGenres(), &record, &stat); nil != err {
+	if err := dao.NewUser().Create(ctx, in.GetGenres(), &record, &stat); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorSavedData)
 	}
 
@@ -81,7 +82,7 @@ func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*enti
 		return nil, xerror.WrapWithXCodeStatus(err, xcode.RequestParamError)
 	}
 
-	record, err := dao.NewVWUser(ctx).First(id, "UserRoles")
+	record, err := dao.NewVWUser().First(ctx, id, "UserRoles")
 	if nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorRequestData)
 	}
@@ -94,7 +95,7 @@ func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*enti
 	// 修改名称
 	if record.Account != in.Account {
 		// 判断重复
-		_, err := dao.NewVWUser(ctx).FirstByAccount(in.Account)
+		_, err := dao.NewVWUser().FirstByAccount(ctx, in.Account)
 		if nil == err || !xerror.IsXCode(err, xcode.DBRecordNotFound) {
 			return nil, xerror.WrapWithXCode(err, ecode.ErrorRecordExist)
 		}
@@ -115,7 +116,7 @@ func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*enti
 		record.Password = pwd
 	}
 
-	if err := dao.NewUser(ctx).Update(record.ToUser(), roles); nil != err {
+	if err := dao.NewUser().Update(ctx, record.ToUser(), roles); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorSavedData)
 	}
 

@@ -1,118 +1,95 @@
 package dao
 
 import (
+	"context"
 	"errors"
 	"server-api/global"
 	"server-api/repository/platform"
 	"server-api/repository/types/platformfilter"
 
-	"github.com/gomooth/pkg/framework/dbquery"
+	"github.com/gomooth/pkg/framework/dbfilter"
+	"github.com/gomooth/pkg/framework/dbrepo"
+	"gorm.io/gorm"
 
 	"github.com/save95/xerror"
 	"github.com/save95/xerror/xcode"
-
-	"gorm.io/gorm"
 )
 
+type IUserLoginLog interface {
+	Create(ctx context.Context, record *platform.UserLoginLog) error
+	Save(ctx context.Context, record *platform.UserLoginLog) error
+	First(ctx context.Context, id uint) (*platform.UserLoginLog, error)
+	FirstByUser(ctx context.Context, userID uint) (*platform.UserLoginLog, error)
+	Paginate(ctx context.Context, start, limit int, option dbfilter.IFilter[platformfilter.UserLoginLog]) ([]*platform.UserLoginLog, uint, error)
+}
+
 type userLoginLog struct {
-	db *gorm.DB
+	db       *gorm.DB
+	dao      dbrepo.IDAO[platform.UserLoginLog]
+	searcher dbrepo.ISearcher[platform.UserLoginLog, platformfilter.UserLoginLog]
 }
 
-func NewUserLoginLog(options ...interface{}) *userLoginLog {
-	impl := userLoginLog{}
-	for _, option := range options {
-		if db, ok := option.(*gorm.DB); ok {
-			impl.db = db
-		}
-	}
+func NewUserLoginLog() IUserLoginLog {
+	result := &userLoginLog{}
 
-	if impl.db == nil {
-		impl.db, _ = global.Database().Get("platform")
-	}
+	db, _ := global.Database().Get("platform")
+	dao := dbrepo.NewDAO[platform.UserLoginLog](db)
+	searcher := dbrepo.NewSearcher[platform.UserLoginLog, platformfilter.UserLoginLog](db,
+		result.buildFilter, result.getSortKeyMapping(),
+	)
 
-	return &impl
+	return &userLoginLog{
+		dao:      dao,
+		searcher: searcher,
+	}
 }
 
-func (u *userLoginLog) Create(record *platform.UserLoginLog) error {
-	if record.ID > 0 {
-		return xerror.WithXCode(xcode.DBRequestParamError)
+func (u *userLoginLog) buildFilter(filter *platformfilter.UserLoginLog, db *gorm.DB) *gorm.DB {
+	if db == nil {
+		db = u.db.Model(platform.UserLoginLog{})
 	}
 
-	if err := u.db.Create(record).Error; nil != err {
-		return xerror.WrapWithXCode(err, xcode.DBFailed)
+	if v := filter.UserID; v > 0 {
+		db = db.Where("user_id in (?)", v)
 	}
 
-	return nil
+	return db
 }
 
-func (u *userLoginLog) Save(record *platform.UserLoginLog) error {
-	if record.ID == 0 {
-		return xerror.WithXCode(xcode.DBRecordNotFound)
+func (u *userLoginLog) getSortKeyMapping() map[string]string {
+	return map[string]string{
+		"created_at":   "created_at",
+		"created_time": "created_at",
 	}
-
-	if err := u.db.Save(record).Error; nil != err {
-		return xerror.WrapWithXCode(err, xcode.DBFailed)
-	}
-
-	return nil
 }
 
-func (u *userLoginLog) First(id uint) (*platform.UserLoginLog, error) {
-	if id == 0 {
-		return nil, xerror.WithXCode(xcode.DBRequestParamError)
-	}
-
-	var record platform.UserLoginLog
-	if err := u.db.Where("id = ?", id).First(&record).Error; nil != err {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, xerror.WithXCode(xcode.DBRecordNotFound)
-		}
-		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
-	}
-
-	return &record, nil
+func (u *userLoginLog) Create(ctx context.Context, record *platform.UserLoginLog) error {
+	return u.dao.Create(ctx, record)
 }
 
-func (u *userLoginLog) FirstByUser(userID uint) (*platform.UserLoginLog, error) {
+func (u *userLoginLog) Save(ctx context.Context, record *platform.UserLoginLog) error {
+	return u.dao.Save(ctx, record)
+}
+
+func (u *userLoginLog) First(ctx context.Context, id uint) (*platform.UserLoginLog, error) {
+	return u.dao.First(ctx, id)
+}
+
+func (u *userLoginLog) FirstByUser(ctx context.Context, userID uint) (*platform.UserLoginLog, error) {
 	if userID == 0 {
 		return nil, xerror.WithXCode(xcode.DBRequestParamError)
 	}
 
-	db := u.db.Model(platform.UserLoginLog{}).
-		Where("user_id = ?", userID)
-
 	var record platform.UserLoginLog
-	if err := db.First(&record).Error; nil != err {
+	if err := u.db.WithContext(ctx).Where("user_id = ?", userID).First(&record).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, xerror.WithXCode(xcode.DBRecordNotFound)
 		}
-
 		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
 	}
-
 	return &record, nil
 }
 
-func (u *userLoginLog) Paginate(start, limit int, option dbquery.IFilter[platformfilter.UserLoginLog]) ([]*platform.UserLoginLog, uint, error) {
-	db := u.db.Model(platform.UserLoginLog{})
-
-	filter := option.Filter()
-
-	if v := filter.UserID; v > 0 {
-		db = db.Where("user_id = ?", v)
-	}
-
-	var total int64
-	_ = db.Count(&total).Error
-
-	db = option.Build(db,
-		dbquery.BuildWithPage(start, limit),
-	)
-
-	var records []*platform.UserLoginLog
-	if err := db.Find(&records).Error; nil != err {
-		return nil, 0, xerror.WrapWithXCode(err, xcode.DBFailed)
-	}
-
-	return records, uint(total), nil
+func (u *userLoginLog) Paginate(ctx context.Context, start, limit int, option dbfilter.IFilter[platformfilter.UserLoginLog]) ([]*platform.UserLoginLog, uint, error) {
+	return u.searcher.Paginate(ctx, start, limit, option)
 }

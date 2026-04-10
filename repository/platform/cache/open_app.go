@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/gomooth/pkg/framework/dbcache"
-	"github.com/gomooth/pkg/framework/dbquery"
-
+	"github.com/gomooth/pkg/framework/dbfilter"
 	"github.com/save95/xerror"
 )
 
@@ -39,13 +38,13 @@ func (s *openAPP) getCacher() (dbcache.IDBCache[platform.OpenAPP, platformfilter
 	), nil
 }
 
-func (s *openAPP) Paginate(ctx context.Context, start, limit int, opt dbquery.IFilter[platformfilter.OpenAPP]) ([]*platform.OpenAPP, uint, error) {
+func (s *openAPP) Paginate(ctx context.Context, start, limit int, opt dbfilter.IFilter[platformfilter.OpenAPP]) ([]*platform.OpenAPP, uint, error) {
 	cacher, err := s.getCacher()
 	if err != nil {
 		return nil, 0, err
 	}
 	return cacher.Paginate(ctx, start, limit, opt, func() ([]*platform.OpenAPP, uint, error) {
-		return dao.NewOpenAPP(ctx).Paginate(start, limit, opt)
+		return dao.NewOpenAPP().Paginate(ctx, start, limit, opt)
 	})
 }
 
@@ -58,7 +57,7 @@ func (s *openAPP) First(ctx context.Context, id uint) (*platform.OpenAPP, error)
 		return nil, err
 	}
 	return cacher.First(ctx, id, func() (*platform.OpenAPP, error) {
-		return dao.NewOpenAPP(ctx).First(id)
+		return dao.NewOpenAPP().First(ctx, id)
 	})
 }
 
@@ -72,7 +71,7 @@ func (s *openAPP) FirstByAppID(ctx context.Context, appID string) (*platform.Ope
 	}
 	key := fmt.Sprintf("byAppID:%s", appID)
 	result, err := cacher.Remember(ctx, key, func() (any, error) {
-		return dao.NewOpenAPP(ctx).FirstByAppID(appID)
+		return dao.NewOpenAPP().FirstByAppID(ctx, appID)
 	})
 	if nil != err {
 		return nil, err

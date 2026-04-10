@@ -11,8 +11,8 @@ import (
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
+	"github.com/gomooth/pkg/framework/dbfilter"
 
-	"github.com/gomooth/pkg/framework/dbquery"
 	"github.com/gomooth/pkg/storage"
 	"github.com/gomooth/utils/sliceutil"
 	"github.com/gomooth/utils/valutil"
@@ -61,9 +61,10 @@ func initForMysql(ctx context.Context, cacheManager *cache.Cache[string]) error 
 	limit := 100
 	hasMore := true
 
+	repo := dao.NewLang()
 	supportedSet := map[language.Tag]struct{}{}
 	for hasMore {
-		records, err := dao.NewLang().List(start, limit, dbquery.New[platformfilter.Lang](nil))
+		records, err := repo.List(ctx, start, limit, dbfilter.New(platformfilter.Lang{}))
 		if nil != err {
 			return err
 		}

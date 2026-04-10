@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gomooth/pkg/framework/dbcache"
-	"github.com/gomooth/pkg/framework/dbquery"
+	"github.com/gomooth/pkg/framework/dbfilter"
 
 	"github.com/save95/xerror"
 )
@@ -38,13 +38,13 @@ func (s *user) getCacher() (dbcache.IDBCache[platform.VWUser, platformfilter.Use
 	), nil
 }
 
-func (s *user) Paginate(ctx context.Context, start, limit int, opt dbquery.IFilter[platformfilter.User]) ([]*platform.VWUser, uint, error) {
+func (s *user) Paginate(ctx context.Context, start, limit int, opt dbfilter.IFilter[platformfilter.User]) ([]*platform.VWUser, uint, error) {
 	cacher, err := s.getCacher()
 	if err != nil {
 		return nil, 0, err
 	}
 	return cacher.Paginate(ctx, start, limit, opt, func() ([]*platform.VWUser, uint, error) {
-		return dao.NewVWUser(ctx).Paginate(start, limit, opt)
+		return dao.NewVWUser().Paginate(ctx, start, limit, opt)
 	})
 }
 
@@ -57,7 +57,7 @@ func (s *user) First(ctx context.Context, id uint) (*platform.VWUser, error) {
 		return nil, err
 	}
 	return cacher.First(ctx, id, func() (*platform.VWUser, error) {
-		return dao.NewVWUser(ctx).First(id)
+		return dao.NewVWUser().First(ctx, id)
 	})
 }
 

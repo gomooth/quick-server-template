@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"server-api/global"
 	"server-api/repository/platform"
 	"server-api/repository/types/platformtypes"
@@ -17,35 +18,34 @@ type user struct {
 	db *gorm.DB
 }
 
-func NewUser(options ...interface{}) *user {
-	impl := user{}
-	for _, option := range options {
-		if db, ok := option.(*gorm.DB); ok {
-			impl.db = db
-		}
-	}
-
-	if impl.db == nil {
-		impl.db, _ = global.Database().Get("platform")
-	}
-
-	return &impl
+type IUser interface {
+	Create(ctx context.Context, genres []int8, record *platform.User, stat *platform.UserStat) error
+	Update(ctx context.Context, record *platform.User, genres []int8) error
+	CreateAndBindThirdUser(ctx context.Context, genres []int8, record *platform.User, stat *platform.UserStat, thirdUserID uint) error
+	Save(ctx context.Context, record *platform.User) error
 }
 
-func (u *user) Create(genres []int8, record *platform.User, stat *platform.UserStat) error {
+func NewUser() IUser {
+	db, _ := global.Database().Get("platform")
+	return &user{
+		db: db,
+	}
+}
+
+func (u *user) Create(ctx context.Context, genres []int8, record *platform.User, stat *platform.UserStat) error {
 	if record.ID > 0 || len(genres) == 0 {
 		return xerror.WithXCode(xcode.DBRequestParamError)
 	}
 
-	return u.db.Transaction(func(tx *gorm.DB) error {
+	return u.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 创建用户
-		if err := tx.Create(record).Error; nil != err {
+		if err := tx.Create(record).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
 		// 写统计
 		stat.UserID = record.ID
-		if err := tx.Create(stat).Error; nil != err {
+		if err := tx.Create(stat).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
@@ -57,7 +57,7 @@ func (u *user) Create(genres []int8, record *platform.User, stat *platform.UserS
 				UserID: record.ID,
 			})
 		}
-		if err := tx.Clauses(clause.Insert{Modifier: "IGNORE"}).CreateInBatches(roles, 100).Error; nil != err {
+		if err := tx.Clauses(clause.Insert{Modifier: "IGNORE"}).CreateInBatches(roles, 100).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
@@ -65,19 +65,19 @@ func (u *user) Create(genres []int8, record *platform.User, stat *platform.UserS
 	})
 }
 
-func (u *user) Update(record *platform.User, genres []int8) error {
+func (u *user) Update(ctx context.Context, record *platform.User, genres []int8) error {
 	if record.ID == 0 {
 		return xerror.WithXCode(xcode.DBRecordNotFound)
 	}
 
-	return u.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(record).Error; nil != err {
+	return u.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(record).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
 		// 清空角色
 		if err := tx.Model(platform.UserRole{}).Unscoped().
-			Where("user_id = ?").Delete(&platform.UserRole{}).Error; nil != err {
+			Where("user_id = ?", record.ID).Delete(&platform.UserRole{}).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
@@ -89,7 +89,7 @@ func (u *user) Update(record *platform.User, genres []int8) error {
 				UserID: record.ID,
 			})
 		}
-		if err := tx.CreateInBatches(roles, 100).Error; nil != err {
+		if err := tx.CreateInBatches(roles, 100).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
@@ -97,12 +97,12 @@ func (u *user) Update(record *platform.User, genres []int8) error {
 	})
 }
 
-func (u *user) CreateAndBindThirdUser(genres []int8, record *platform.User, stat *platform.UserStat, thirdUserID uint) error {
+func (u *user) CreateAndBindThirdUser(ctx context.Context, genres []int8, record *platform.User, stat *platform.UserStat, thirdUserID uint) error {
 	if record.ID > 0 {
 		return xerror.WithXCode(xcode.DBRequestParamError)
 	}
 
-	return u.db.Transaction(func(tx *gorm.DB) error {
+	return u.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 如果存在则更新
 		if err := tx.Where("account = ?", record.Account).
 			Assign(map[string]interface{}{
@@ -110,13 +110,13 @@ func (u *user) CreateAndBindThirdUser(genres []int8, record *platform.User, stat
 				"password":   record.Password,
 				"deleted_at": nil, // 清空删除状态
 			}).
-			FirstOrCreate(record).Error; nil != err {
+			FirstOrCreate(record).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
 		// 写统计
 		stat.UserID = record.ID
-		if err := tx.FirstOrCreate(stat).Error; nil != err {
+		if err := tx.FirstOrCreate(stat).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
@@ -129,7 +129,7 @@ func (u *user) CreateAndBindThirdUser(genres []int8, record *platform.User, stat
 			})
 		}
 		if err := tx.Clauses(clause.Insert{Modifier: "IGNORE"}).
-			CreateInBatches(roles, 100).Error; nil != err {
+			CreateInBatches(roles, 100).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
@@ -143,7 +143,7 @@ func (u *user) CreateAndBindThirdUser(genres []int8, record *platform.User, stat
 				Updates(map[string]interface{}{
 					"user_id": record.ID,
 					"bind_at": time.Now(),
-				}).Error; nil != err {
+				}).Error; err != nil {
 				return xerror.WrapWithXCode(err, xcode.DBFailed)
 			}
 		case platformtypes.UserFromPlatformAlipay:
@@ -152,7 +152,7 @@ func (u *user) CreateAndBindThirdUser(genres []int8, record *platform.User, stat
 				Updates(map[string]interface{}{
 					"user_id": record.ID,
 					"bind_at": time.Now(),
-				}).Error; nil != err {
+				}).Error; err != nil {
 				return xerror.WrapWithXCode(err, xcode.DBFailed)
 			}
 		default:
@@ -163,14 +163,13 @@ func (u *user) CreateAndBindThirdUser(genres []int8, record *platform.User, stat
 	})
 }
 
-func (u *user) Save(record *platform.User) error {
+func (u *user) Save(ctx context.Context, record *platform.User) error {
 	if record.ID == 0 {
 		return xerror.WithXCode(xcode.DBRecordNotFound)
 	}
 
-	if err := u.db.Save(record).Error; nil != err {
+	if err := u.db.WithContext(ctx).Save(record).Error; nil != err {
 		return xerror.WrapWithXCode(err, xcode.DBFailed)
 	}
-
 	return nil
 }

@@ -1,122 +1,51 @@
 package dao
 
 import (
+	"context"
 	"errors"
 	"server-api/global"
 	"server-api/repository/platform"
 	"server-api/repository/types/platformfilter"
 
-	"github.com/gomooth/pkg/framework/dbquery"
-
+	"github.com/gomooth/pkg/framework/dbfilter"
+	"github.com/gomooth/pkg/framework/dbrepo"
 	"github.com/save95/xerror"
 	"github.com/save95/xerror/xcode"
-
 	"gorm.io/gorm"
 )
 
+type ILang interface {
+	FirstByCode(ctx context.Context, code int) (*platform.Lang, error)
+	All(ctx context.Context, option dbfilter.IFilter[platformfilter.Lang]) ([]*platform.Lang, error)
+	List(ctx context.Context, start, limit int, option dbfilter.IFilter[platformfilter.Lang]) ([]*platform.Lang, error)
+	Paginate(ctx context.Context, start, limit int, option dbfilter.IFilter[platformfilter.Lang]) ([]*platform.Lang, uint, error)
+}
+
 type lang struct {
-	db *gorm.DB
+	db       *gorm.DB
+	dao      dbrepo.IDAO[platform.Lang]
+	searcher dbrepo.ISearcher[platform.Lang, platformfilter.Lang]
 }
 
-func NewLang(options ...interface{}) *lang {
-	impl := lang{}
-	for _, option := range options {
-		if db, ok := option.(*gorm.DB); ok {
-			impl.db = db
-		}
-	}
+func NewLang() ILang {
+	result := &lang{}
 
-	if impl.db == nil {
-		impl.db, _ = global.Database().Get("platform")
-	}
-
-	return &impl
-}
-
-func (u *lang) First(id uint) (*platform.Lang, error) {
-	if id == 0 {
-		return nil, xerror.WithXCode(xcode.DBRequestParamError)
-	}
-
-	var record platform.Lang
-	if err := u.db.Where("id = ?", id).First(&record).Error; nil != err {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, xerror.WithXCode(xcode.DBRecordNotFound)
-		}
-		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
-	}
-
-	return &record, nil
-}
-
-func (u *lang) FirstByCode(code int) (*platform.Lang, error) {
-	db := u.db.Model(platform.Lang{}).
-		Where("code = ?", code)
-
-	var record platform.Lang
-	if err := db.First(&record).Error; nil != err {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, xerror.WithXCode(xcode.DBRecordNotFound)
-		}
-
-		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
-	}
-
-	return &record, nil
-}
-
-func (u *lang) All(option dbquery.IFilter[platformfilter.Lang]) ([]*platform.Lang, error) {
-	db := u.buildFilter(option.Filter())
-
-	db = option.Build(db,
-		dbquery.BuildWithSortKeyMappings(u.getSortKeyMapping()),
+	db, _ := global.Database().Get("platform")
+	dao := dbrepo.NewDAO[platform.Lang](db)
+	searcher := dbrepo.NewSearcher[platform.Lang, platformfilter.Lang](db,
+		result.buildFilter, result.getSortKeyMapping(),
 	)
 
-	var records []*platform.Lang
-	if err := db.Find(&records).Error; nil != err {
-		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
+	return &lang{
+		dao:      dao,
+		searcher: searcher,
 	}
-
-	return records, nil
 }
 
-func (u *lang) List(start, limit int, option dbquery.IFilter[platformfilter.Lang]) ([]*platform.Lang, error) {
-	db := u.buildFilter(option.Filter())
-
-	db = option.Build(db,
-		dbquery.BuildWithPage(start, limit),
-		dbquery.BuildWithSortKeyMappings(u.getSortKeyMapping()),
-	)
-
-	var records []*platform.Lang
-	if err := db.Find(&records).Error; nil != err {
-		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
+func (l *lang) buildFilter(filter *platformfilter.Lang, db *gorm.DB) *gorm.DB {
+	if db == nil {
+		db = l.db.Model(platform.Lang{})
 	}
-
-	return records, nil
-}
-
-func (u *lang) Paginate(start, limit int, option dbquery.IFilter[platformfilter.Lang]) ([]*platform.Lang, uint, error) {
-	db := u.buildFilter(option.Filter())
-
-	var total int64
-	_ = db.Count(&total).Error
-
-	db = option.Build(db,
-		dbquery.BuildWithPage(start, limit),
-		dbquery.BuildWithSortKeyMappings(u.getSortKeyMapping()),
-	)
-
-	var records []*platform.Lang
-	if err := db.Find(&records).Error; nil != err {
-		return nil, 0, xerror.WrapWithXCode(err, xcode.DBFailed)
-	}
-
-	return records, uint(total), nil
-}
-
-func (u *lang) buildFilter(filter *platformfilter.Lang) *gorm.DB {
-	db := u.db.Model(platform.Lang{})
 
 	if v := filter.Codes; len(v) > 0 {
 		db = db.Where("code in (?)", v)
@@ -129,9 +58,32 @@ func (u *lang) buildFilter(filter *platformfilter.Lang) *gorm.DB {
 	return db
 }
 
-func (u *lang) getSortKeyMapping() map[string]string {
+func (l *lang) getSortKeyMapping() map[string]string {
 	return map[string]string{
 		"created_at":   "created_at",
 		"created_time": "created_at",
 	}
+}
+
+func (l *lang) FirstByCode(ctx context.Context, code int) (*platform.Lang, error) {
+	var record platform.Lang
+	if err := l.db.WithContext(ctx).Where("code = ?", code).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, xerror.WithXCode(xcode.DBRecordNotFound)
+		}
+		return nil, xerror.WrapWithXCode(err, xcode.DBFailed)
+	}
+	return &record, nil
+}
+
+func (l *lang) All(ctx context.Context, option dbfilter.IFilter[platformfilter.Lang]) ([]*platform.Lang, error) {
+	return l.searcher.All(ctx, option)
+}
+
+func (l *lang) List(ctx context.Context, start, limit int, option dbfilter.IFilter[platformfilter.Lang]) ([]*platform.Lang, error) {
+	return l.searcher.List(ctx, start, limit, option)
+}
+
+func (l *lang) Paginate(ctx context.Context, start, limit int, option dbfilter.IFilter[platformfilter.Lang]) ([]*platform.Lang, uint, error) {
+	return l.searcher.Paginate(ctx, start, limit, option)
 }

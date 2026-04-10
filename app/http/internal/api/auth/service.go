@@ -28,7 +28,7 @@ func (s *service) Login(ctx context.Context, in *createTokenRequest) (*tokenEnti
 		return nil, xerror.WithXCodeMessage(xcode.RequestParamError, err.Error())
 	}
 
-	user, err := dao.NewVWUser(ctx).FirstByAccount(in.Account, "UserRoles")
+	user, err := dao.NewVWUser().FirstByAccount(ctx, in.Account, "UserRoles")
 	if err != nil {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorAuthParams)
 	}
@@ -80,14 +80,14 @@ func (s *service) makeToken(ctx context.Context, user *platform.VWUser) (*tokenE
 	user.LastLoginAt = &now
 	user.LastLoginIP = ctx.(*gin.Context).ClientIP()
 	user.UpdatedAt = now
-	if err := dao.NewUser(ctx).Save(user.ToUser()); nil != err {
+	if err := dao.NewUser().Save(ctx, user.ToUser()); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorAuthFailed)
 	}
 
 	// 写登陆日志
 	httpRequest := ctx.(*gin.Context).Request
 	header := helper.ParseAPPHeader(ctx)
-	_ = dao.NewUserLoginLog(ctx).Create(&platform.UserLoginLog{
+	_ = dao.NewUserLoginLog().Create(ctx, &platform.UserLoginLog{
 		UserID:    user.ID,
 		UserAgent: httpRequest.UserAgent(),
 		IP:        user.LastLoginIP,
@@ -137,7 +137,7 @@ func (s *service) ChangePwd(ctx context.Context, in *changePwdRequest) error {
 		return xerror.WithXCode(xcode.Unauthorized)
 	}
 
-	user, err := dao.NewVWUser(ctx).First(owner.ID)
+	user, err := dao.NewVWUser().First(ctx, owner.ID)
 	if nil != err {
 		return xerror.WrapWithXCode(err, ecode.ErrorRequestData)
 	}
@@ -152,7 +152,7 @@ func (s *service) ChangePwd(ctx context.Context, in *changePwdRequest) error {
 	}
 	user.Password = password
 
-	if err := dao.NewUser(ctx).Save(user.ToUser()); nil != err {
+	if err := dao.NewUser().Save(ctx, user.ToUser()); nil != err {
 		return xerror.WrapWithXCode(err, ecode.ErrorHandleFailed)
 	}
 

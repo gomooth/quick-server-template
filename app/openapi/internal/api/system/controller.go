@@ -36,7 +36,7 @@ func (c Controller) Sign(ctx *gin.Context) {
 		return
 	}
 
-	app, err := dao.NewOpenAPP(ctx).FirstByAppID(h.AppID)
+	app, err := dao.NewOpenAPP().FirstByAppID(ctx, h.AppID)
 	if nil != err {
 		rru.WithError(xerror.New("获取应用信息失败"))
 		return
