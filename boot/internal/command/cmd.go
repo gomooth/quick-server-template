@@ -3,13 +3,12 @@ package command
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/gomooth/pkg/job"
 
-	"server-api/global"
-
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type cmd struct {
@@ -27,9 +26,9 @@ func NewCommand(ctx context.Context, timeout int) *cmd {
 	}
 }
 
-func (c *cmd) Register(name string, cmd job.ICommandJob) {
+func (c *cmd) Register(_ context.Context, name string, cmd job.ICommandJob) {
 	if _, ok := c.tasks[name]; ok {
-		global.Log.Warningf("command registe skip. duplicated name: %s", name)
+		slog.Warn("command registe skip", "name", name)
 		return
 	}
 
@@ -39,22 +38,22 @@ func (c *cmd) Register(name string, cmd job.ICommandJob) {
 func (c *cmd) Execute(name string, args ...string) {
 	task, ok := c.tasks[name]
 	if !ok {
-		global.Log.Warningf("command task not exist. task=%s, args=%s", name, args)
+		slog.Warn("command task not exist", "task", name, "args", args)
 		return
 	}
 	if task == nil {
-		global.Log.Warningf("command task is nil, skip. task=%s, args=%s", name, args)
+		slog.Warn("command task is nil, skip", "task", name, "args", args)
 		return
 	}
 
-	if err := task.Run(args...); nil != err {
+	if err := task.Run(c.ctx, args...); nil != err {
 		var xe xerror.XError
 		if errors.As(err, &xe) {
 			err = xe.Unwrap()
 		}
-		global.Log.Errorf("command failed, task=%s, args=%s, err=%+v", name, args, err)
+		slog.Error("command failed", "task", name, "args", args, "err", err)
 		return
 	}
 
-	global.Log.Infof("command done, task=%s, args=%s", name, args)
+	slog.Info("command done", "task", name, "args", args)
 }

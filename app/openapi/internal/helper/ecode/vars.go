@@ -1,6 +1,6 @@
 package ecode
 
-import "github.com/save95/xerror/xcode"
+import "github.com/gomooth/xerror/xcode"
 
 var (
 	InternalError      = xcode.NewWithMessage(1001, "系统内部错误")

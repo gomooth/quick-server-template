@@ -1,12 +1,12 @@
 package route
 
 import (
-	"server-api/app/http/internal/api/file"
-	"server-api/app/http/internal/helper"
 	"server-api/global"
+	"server-api/app/http/internal/api/file"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/gomooth/pkg/http/jwt"
 	"github.com/gomooth/pkg/http/middleware"
 )
 
@@ -16,7 +16,11 @@ func RegisterFile(rg *gin.Engine) {
 	v1 := rg.Group(
 		"/file",
 		middleware.RESTFul(global.ApiVersionLatest),
-		middleware.JWTStatefulWithout(helper.JWTOption(false).WithSilent(true)),
+		middleware.JWTStatefulWithout(
+			[]byte(global.Config.App.Secret),
+			global.NewRole,
+			jwt.WithSilentMode(true),
+		),
 		middleware.WithRole(global.RoleUser),
 	)
 	{

@@ -2,10 +2,10 @@ package watcher
 
 import (
 	"context"
-	"server-api/global"
+	"log/slog"
 
 	"github.com/gomooth/pkg/framework/app"
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -26,7 +26,7 @@ func NewFileServer(ctx context.Context, filename string, cb func(ev fsnotify.Eve
 	}
 }
 
-func (s *server) Start() error {
+func (s *server) Start(_ context.Context) error {
 	if len(s.filename) == 0 {
 		return xerror.New("filename is empty")
 	}
@@ -44,17 +44,17 @@ func (s *server) Start() error {
 					return
 				}
 
-				global.Log.Debugf("file(%s) %s...", event.Name, event.Op)
+				slog.Debug("file event", "name", event.Name, "op", event.Op)
 				if event.Name == s.filename {
 					if err := s.f(event); nil != err {
-						global.Log.Errorf("file(%s) charged, watch handle failed: %+v", event.Name, err)
+						slog.Error("file charged, watch handle failed", "name", event.Name, "err", err)
 					}
 				}
 			case err, ok := <-s.watcher.Errors:
 				if !ok {
 					return
 				}
-				global.Log.Errorf("file watch error: %+v", err)
+				slog.Error("file watch error", "err", err)
 			}
 		}
 	}()
@@ -63,10 +63,10 @@ func (s *server) Start() error {
 		return err
 	}
 
-	global.Log.Info("file watch server starting...")
+	slog.Info("file watch server starting...")
 	return nil
 }
 
-func (s *server) Shutdown() error {
+func (s *server) Shutdown(_ context.Context) error {
 	return s.watcher.Close()
 }

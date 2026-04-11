@@ -3,15 +3,17 @@ package consumer
 import (
 	"server-api/app/consumer/internal/consumer/example"
 
-	"github.com/gomooth/pkg/mq/queue"
+	"github.com/gomooth/pkg/mq"
 )
 
-func SingleConsumerRegister(r queue.IRegister) {
-	r.Register(example.RedisConsumer())
-	//r.Register(example.HttpSQSConsumer())
+func SingleConsumerRegister(s mq.IConsumeServer) error {
+	if err := s.Register("test", example.RedisHandler); err != nil {
+		return err
+	}
 
 	// NOTE: 注册其它消费者
 
+	return nil
 }
 
 // SingleConsumerRelease 释放资源

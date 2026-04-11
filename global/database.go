@@ -17,8 +17,9 @@ import (
 	"github.com/gomooth/pkg/framework/dbmanager"
 	"github.com/gomooth/pkg/framework/dbutil"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
+
 
 var (
 	_redisClient  *redis.Client

@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type uploadRequest struct {

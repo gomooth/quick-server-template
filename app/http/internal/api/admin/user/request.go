@@ -2,7 +2,7 @@ package user
 
 import (
 	"github.com/gomooth/pkg/http/httpmodel"
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type paginateRequest struct {

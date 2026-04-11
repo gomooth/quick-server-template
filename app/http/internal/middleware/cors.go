@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"server-api/global"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 func CORS() gin.HandlerFunc {
 	return middleware.CORS(
 		middleware.WithCORSAllowOriginFunc(func(origin string) bool {
-			fmt.Println("CORS origin: ", origin)
 			if !global.Env().IsProd() {
 				return true
 			}

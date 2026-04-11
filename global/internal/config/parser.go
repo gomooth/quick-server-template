@@ -8,7 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gomooth/pkg/storage"
 	"github.com/gomooth/utils/fsutil"
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 // ParseConfig 解析配置
@@ -25,7 +25,11 @@ const exampleConfigFilename = "config.example.toml" // APP 配置样例文件
 
 func GetConfigFilename(filename string) (string, error) {
 	cnfPath := storage.Disk("config")
-	exampleFilename := path.Join(cnfPath.Path(), exampleConfigFilename)
+	basePath, err := cnfPath.Path()
+	if err != nil {
+		return "", xerror.Wrap(err, "get config path failed")
+	}
+	exampleFilename := path.Join(basePath, exampleConfigFilename)
 	localFilename := strings.ReplaceAll(exampleFilename, ".example.", ".")
 	if len(filename) == 0 {
 		if fsutil.Exist(localFilename) {
@@ -57,6 +61,10 @@ func GetConfigFilename(filename string) (string, error) {
 
 func ClearConfigExampleFile() {
 	cnfPath := storage.Disk("config")
-	exampleFilename := path.Join(cnfPath.Path(), exampleConfigFilename)
+	basePath, err := cnfPath.Path()
+	if err != nil {
+		return
+	}
+	exampleFilename := path.Join(basePath, exampleConfigFilename)
 	_ = os.Remove(exampleFilename)
 }

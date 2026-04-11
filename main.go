@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"server-api/boot"
 	"server-api/global"
+	"server-api/boot"
 )
 
 var (

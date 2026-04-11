@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"server-api/global"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/save95/xerror/xcode"
+	"github.com/gomooth/xerror/xcode"
 
 	"golang.org/x/sync/singleflight"
 
@@ -44,7 +45,7 @@ func langHandle() func(code int, lang language.Tag) string {
 			key := getMsgKey(lang, code)
 			cacheManager, err := global.StringCacheManager()
 			if nil != err {
-				global.Log.Warningf("get Cache Manager failed: lang=%s, code=%d, err=%s", lang, code, err)
+				slog.Warn("get Cache Manager failed", "lang", lang, "code", code, "err", err)
 				return "", nil
 			}
 			return cacheManager.Get(ctx, key)
@@ -52,7 +53,7 @@ func langHandle() func(code int, lang language.Tag) string {
 
 		if nil != err {
 			if !errors.Is(err, redis.Nil) {
-				global.Log.Errorf("get lang failed: lang=%s, err=%+v", lang, err)
+				slog.Error("get lang failed", "lang", lang, "err", err)
 			}
 			return ""
 		}
@@ -66,7 +67,7 @@ func langHandle() func(code int, lang language.Tag) string {
 func Content(ctx context.Context, code xcode.XCode) string {
 	gtx, ok := ctx.(*gin.Context)
 	if !ok {
-		global.Log.Error("parse header failed in lang.Content")
+		slog.Error("parse header failed in lang.Content")
 		return ""
 	}
 

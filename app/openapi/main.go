@@ -1,9 +1,9 @@
 package openapi
 
 import (
+	"server-api/global"
 	"server-api/app/openapi/internal/api/ping"
 	"server-api/app/openapi/internal/route"
-	"server-api/global"
 
 	"github.com/gomooth/pkg/http/middleware"
 
@@ -15,6 +15,7 @@ import (
 // 单个模块的路由注册使用私有方法，不对外暴露
 func Register(router *gin.Engine) {
 	router.Any("/ping", ping.Controller{}.Ping)
+
 	router.Any("/endpoint", middleware.HttpPrinter(global.Log), ping.Controller{}.Endpoint)
 
 	// 注册路由

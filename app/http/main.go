@@ -1,10 +1,10 @@
 package http
 
 import (
+	"server-api/global"
 	"server-api/app/http/internal/api/ping"
 	"server-api/app/http/internal/route"
 	"server-api/app/http/internal/route/admin"
-	"server-api/global"
 
 	"github.com/gomooth/pkg/http/middleware"
 
@@ -32,3 +32,4 @@ func Release() error {
 
 	return nil
 }
+

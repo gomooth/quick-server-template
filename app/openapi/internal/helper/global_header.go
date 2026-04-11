@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type Header struct {
@@ -21,19 +21,19 @@ type Header struct {
 func (h *Header) Validate() error {
 	if len(h.AppID) == 0 || len(h.AppVersion) == 0 || len(h.SignType) == 0 ||
 		len(h.Timestamp) == 0 || len(h.Sign) == 0 {
-		return xerror.WithXCode(ecode.MissRequired)
+		return xerror.NewXCode(ecode.MissRequired)
 	}
 	if h.AppVersion != Version {
-		return xerror.WithXCode(ecode.RequiredParamError)
+		return xerror.NewXCode(ecode.RequiredParamError)
 	}
 	if h.SignType != "sha1" {
-		return xerror.WithXCode(ecode.RequiredParamError)
+		return xerror.NewXCode(ecode.RequiredParamError)
 	}
 	if len(h.Timestamp) != 10 {
-		return xerror.WithXCode(ecode.RequiredParamError)
+		return xerror.NewXCode(ecode.RequiredParamError)
 	}
 	if _, err := strconv.ParseInt(h.Timestamp, 10, 64); err != nil {
-		return xerror.WithXCode(ecode.RequiredParamError)
+		return xerror.NewXCode(ecode.RequiredParamError)
 	}
 	return nil
 }

@@ -3,28 +3,29 @@ package lang
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"server-api/global"
-	"server-api/repository/platform/dao"
-	"server-api/repository/types/platformfilter"
+	"server-api/repository/platform/pdao"
+	"server-api/repository/platform/pfilter"
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
-	"github.com/gomooth/pkg/framework/dbfilter"
+	"github.com/gomooth/pkg/framework/dbquery"
 
 	"github.com/gomooth/pkg/storage"
 	"github.com/gomooth/utils/sliceutil"
 	"github.com/gomooth/utils/valutil"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 
 	"golang.org/x/text/language"
 )
 
 func Init(ctx context.Context) error {
 	if !global.Config.Data.Cache.Enabled {
-		global.Log.Warningf("lang init skip, because cache is disabled")
+		slog.Warn("lang init skip, because cache is disabled")
 		return nil
 	}
 
@@ -46,14 +47,14 @@ func Init(ctx context.Context) error {
 	}
 
 	// 去重
-	supportedLanguages = sliceutil.Unique(supportedLanguages...)
+	supportedLanguages = sliceutil.Unique(supportedLanguages)
 
 	return nil
 }
 
 func initForMysql(ctx context.Context, cacheManager *cache.Cache[string]) error {
 	if !global.Config.Data.Persistent.Enabled {
-		global.Log.Debug("lang init for mysql, but database disabled, skip")
+		slog.Debug("lang init for mysql, but database disabled, skip")
 		return nil
 	}
 
@@ -61,10 +62,10 @@ func initForMysql(ctx context.Context, cacheManager *cache.Cache[string]) error 
 	limit := 100
 	hasMore := true
 
-	repo := dao.NewLang()
+	repo := pdao.NewLang()
 	supportedSet := map[language.Tag]struct{}{}
 	for hasMore {
-		records, err := repo.List(ctx, start, limit, dbfilter.New(platformfilter.Lang{}))
+		records, err := repo.List(ctx, dbquery.NewQuery(pfilter.Lang{}, dbquery.WithOffsetPage[pfilter.Lang](start, limit)))
 		if nil != err {
 			return err
 		}
@@ -105,7 +106,11 @@ func initForMysql(ctx context.Context, cacheManager *cache.Cache[string]) error 
 
 func initForLocal(ctx context.Context, cacheManager *cache.Cache[string]) error {
 	langPath := storage.Disk("langs")
-	files, err := filepath.Glob(langPath.Path() + "/*.json")
+	langDir, err := langPath.Path()
+	if err != nil {
+		return xerror.Wrap(err, "get lang path failed")
+	}
+	files, err := filepath.Glob(langDir + "/*.json")
 	if err != nil {
 		return err
 	}

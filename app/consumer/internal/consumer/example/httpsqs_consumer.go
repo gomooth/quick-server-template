@@ -2,44 +2,33 @@ package example
 
 import (
 	"context"
+	"log/slog"
 	"server-api/global"
 	"time"
 
-	"github.com/gomooth/httpsqs"
-	"github.com/gomooth/pkg/mq/httpsqsconsumer"
-	"github.com/gomooth/pkg/mq/queue"
+	httpsqsdirect "github.com/gomooth/httpsqs"
+	"github.com/gomooth/pkg/mq"
+	"github.com/gomooth/pkg/mq/httpsqs"
 )
 
-func HttpSQSConsumer() queue.IConsumer {
-	return httpsqsconsumer.New(
-		httpsqsconsumer.WithLogger(global.Log),
-		httpsqsconsumer.WithMaxRetry(3),
-		httpsqsconsumer.WithHandler(&httpSQSConsumerHandler{}),
-	)
-}
+// HttpSQSHandler HTTPSQS 消费者处理器
+var HttpSQSHandler mq.IHandler = mq.FuncHandler(func(ctx context.Context, msg mq.Message) error {
+	pos, _ := msg.HttpsqSPosition()
+	slog.Info("httpsqs consumer receive", "data", string(msg.Data), "pos", pos)
+	return nil
+})
 
-type httpSQSConsumerHandler struct{}
-
-func (h *httpSQSConsumerHandler) QueueName() string {
-	return "test"
-}
-
-func (h *httpSQSConsumerHandler) GetClient() (httpsqs.IClient, error) {
-	return httpsqs.NewClient(&httpsqs.Config{
+// NewHTTPSQSConsumer 创建 HTTPSQS 消费者
+func NewHTTPSQSConsumer() mq.IConsumeServer {
+	client := httpsqsdirect.NewClient(&httpsqsdirect.Config{
 		Addr:     global.Config.Consumer.HTTPSQS.Addr,
 		Password: global.Config.Consumer.HTTPSQS.Password,
 		Timeout:  time.Duration(global.Config.Consumer.HTTPSQS.Timeout) * time.Second,
-	}), nil
-}
+	})
 
-func (h *httpSQSConsumerHandler) OnBefore(ctx context.Context) error {
-	return nil
-}
-
-func (h *httpSQSConsumerHandler) Handle(ctx context.Context, data string, pos int64) error {
-	global.Log.Infof("[consumer] httpsqs consumer receive: %s, pos: %d", data, pos)
-	return nil
-}
-
-func (h *httpSQSConsumerHandler) OnFailed(ctx context.Context, data string, err error) {
+	return httpsqs.NewConsumer(
+		httpsqs.WithHTTPSQSClient(client),
+		httpsqs.WithMaxRetry(3),
+		httpsqs.WithConsumer("test", HttpSQSHandler),
+	)
 }

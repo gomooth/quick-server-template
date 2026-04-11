@@ -9,7 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 func RedisLocker(opt *redis.Options) (locker.ILocker, error) {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
-	httpapp "server-api/app/http"
 	"server-api/global"
+	httpapp "server-api/app/http"
 	"strings"
 	"time"
 
@@ -15,8 +16,7 @@ import (
 	"github.com/gomooth/pkg/framework/app"
 	"github.com/gomooth/pkg/http/middleware"
 
-	"github.com/save95/xerror"
-	"github.com/save95/xlog"
+	"github.com/gomooth/xerror"
 )
 
 type server struct {
@@ -28,7 +28,7 @@ func New(ctx context.Context) app.IApp {
 	return &server{ctx: ctx}
 }
 
-func (s *server) Start() error {
+func (s *server) Start(_ context.Context) error {
 	addr := strings.TrimSpace(global.Config.Server.HTTP.Addr)
 	host := strings.TrimSpace(global.Config.Server.HTTP.Host)
 	if len(addr) == 0 || len(host) == 0 {
@@ -64,15 +64,15 @@ func (s *server) Start() error {
 	}
 
 	// 非调试模式下，启用发布模式
-	if global.Env().IsProd() && xlog.ParseLevel(global.Config.App.Log.Level) != xlog.DebugLevel {
+	if global.Env().IsProd() && global.Config.App.Log.Level != "debug" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// 注册路由，路由统一安置在 app/http/route 目录，由 main 引导
 	httpapp.RouteRegister(r)
 
-	global.Log.Infof("http server listening and serving HTTP on %s", addr)
-	global.Log.Info("http server starting...")
+	slog.Info("http server listening and serving HTTP", "addr", addr)
+	slog.Info("http server starting...")
 
 	s.httpServer = &http.Server{
 		Addr:    addr,
@@ -88,8 +88,8 @@ func (s *server) Start() error {
 	return nil
 }
 
-func (s *server) Shutdown() error {
-	defer global.Log.Infof("http server stop")
+func (s *server) Shutdown(_ context.Context) error {
+	defer slog.Info("http server stop")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -100,7 +100,7 @@ func (s *server) Shutdown() error {
 
 	// 释放资源
 	if err := httpapp.Release(); err != nil {
-		global.Log.Errorf("http server release failed, %+v", err)
+		slog.Error("http server release failed", "err", err)
 	}
 
 	return nil

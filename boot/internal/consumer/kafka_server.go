@@ -2,77 +2,82 @@ package consumer
 
 import (
 	"context"
-	"server-api/app/consumer"
+	"encoding/json"
+	"log/slog"
 	"server-api/global"
-	"server-api/repository/platform"
+	"server-api/app/consumer"
+	"server-api/repository/platform/pmodel"
 
-	"github.com/gomooth/pkg/framework/app"
-	"github.com/gomooth/pkg/mq/kafkaconsumer"
+	"github.com/gomooth/pkg/mq"
+	"github.com/gomooth/pkg/mq/kafka"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type kafkaServer struct {
-	ctx  context.Context
 	name string
-	svr  app.IApp
+	svr  mq.IConsumeServer
 }
 
-func newKafka(ctx context.Context, name string) app.IApp {
+func newKafka(name string) *kafkaServer {
 	return &kafkaServer{
-		ctx:  ctx,
 		name: name,
 	}
 }
 
-func (s *kafkaServer) Start() error {
-	svr := kafkaconsumer.NewServer(
+func (s *kafkaServer) Start(ctx context.Context) error {
+	svr := kafka.NewConsumer(
 		global.Config.Consumer.Kafka.Addrs,
-		kafkaconsumer.WithContext(s.ctx),
-		kafkaconsumer.WithLogger(global.Log),
-		kafkaconsumer.WithConsumeGroupFailedHandler(s.cgFailedHandler),
+		kafka.WithFailedHandler(s.failedHandler),
 	)
 
 	// 注册服务
-	consumer.KafkaRegister(svr)
+	if err := consumer.KafkaRegister(svr); err != nil {
+		return xerror.Wrap(err, "kafka consumer register failed")
+	}
 
 	count := svr.Count()
 	if count == 0 {
-		global.Log.Infof("kafka-consumer server no register consumer, skip")
+		slog.Info("kafka-consumer server no register consumer, skip")
 		return nil
 	}
 
-	global.Log.Infof("kafka-consumer server starting, %d consumer ...", count)
+	slog.Info("kafka-consumer server starting", "count", count)
 
-	if err := svr.Start(); nil != err {
-		global.Log.Errorf("kafka-consumer server start error, %s", err.Error())
+	if err := svr.Start(ctx); nil != err {
+		slog.Error("kafka-consumer server start error", "err", err)
 		return err
 	}
 
 	// 标记在线
-	flagErr := s.setRunStateFlag()
+	flagErr := s.setRunStateFlag(ctx)
 
-	global.Log.Infof("kafka-consumer server started. online-flag(%v)", flagErr == nil)
+	slog.Info("kafka-consumer server started", "online", flagErr == nil)
 	s.svr = svr
 	return nil
 }
 
-func (s *kafkaServer) cgFailedHandler(consumerGroup, topic string, msg []byte, err error) {
+func (s *kafkaServer) failedHandler(ctx context.Context, msg mq.Message, err error) {
 	db, derr := global.Database().Get("platform")
 	if nil != derr {
-		global.Log.Errorf("kafka-consumer failed saver get db failed, err=%+v", derr)
+		slog.Error("kafka-consumer failed saver get db failed", "err", derr)
 		return
 	}
 
-	record := &platform.FailedListener{
-		ConsumeGroup:  consumerGroup,
-		Topic:         topic,
-		Msg:           string(msg),
-		FailedPayload: xerror.ParsePayload(err),
-		FailedReason:  xerror.FormatStackTrace(err),
+	group, _ := msg.KafkaGroup()
+	record := &pmodel.FailedListener{
+		ConsumeGroup:  group,
+		Topic:         msg.Queue,
+		Msg:           string(msg.Data),
+		FailedPayload: func() string {
+			payload := xerror.ParsePayload(err)
+			bs, _ := json.Marshal(payload)
+			return string(bs)
+		}(),
+		FailedReason: xerror.StackTrace(err),
 	}
 	if err := db.Create(record).Error; nil != err {
-		global.Log.Errorf("kafka-consumer failed saver failed, err=%+v", err)
+		slog.Error("kafka-consumer failed saver failed", "err", err)
 		return
 	}
 }
@@ -81,31 +86,31 @@ func (s *kafkaServer) getRunningFlagKey() string {
 	return global.GetServerRunningFlagKey("consumer", s.name)
 }
 
-func (s *kafkaServer) setRunStateFlag() error {
+func (s *kafkaServer) setRunStateFlag(ctx context.Context) error {
 	// 设置标记缓存
 	key := s.getRunningFlagKey()
 	redisClient, err := global.RedisClient()
 	if nil != err {
 		return xerror.Wrap(err, "get redis client failed")
 	}
-	if err := redisClient.Set(s.ctx, key, "1", 0).Err(); nil != err {
+	if err := redisClient.Set(ctx, key, "1", 0).Err(); nil != err {
 		return xerror.Wrap(err, "kafka-consumer running state flag failed")
 	}
 	return nil
 }
 
-func (s *kafkaServer) Shutdown() error {
-	defer global.Log.Infof("kafka-consumer server stoped")
+func (s *kafkaServer) Shutdown(ctx context.Context) error {
+	defer slog.Info("kafka-consumer server stopped")
 
 	if s.svr != nil {
-		if err := s.svr.Shutdown(); err != nil {
+		if err := s.svr.Shutdown(ctx); err != nil {
 			return xerror.Wrap(err, "kafka-consumer server shutdown failed")
 		}
 	}
 
 	// 释放资源
 	if err := consumer.KafkaRelease(); err != nil {
-		global.Log.Errorf("kafka-consumer release failed, %+v", err)
+		slog.Error("kafka-consumer release failed", "err", err)
 	}
 
 	// 清理标记缓存
@@ -114,7 +119,7 @@ func (s *kafkaServer) Shutdown() error {
 	if nil != err {
 		return nil
 	}
-	_ = redisClient.Del(s.ctx, key).Err()
+	_ = redisClient.Del(ctx, key).Err()
 
 	return nil
 }

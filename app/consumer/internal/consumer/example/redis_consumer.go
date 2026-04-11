@@ -1,22 +1,14 @@
 package example
 
 import (
-	"server-api/global"
+	"context"
+	"log/slog"
 
-	"github.com/gomooth/pkg/mq/queue"
-	"github.com/gomooth/pkg/mq/redisconsumer"
+	"github.com/gomooth/pkg/mq"
 )
 
-var cnf = &queue.RedisQueueConfig{
-	Addr:     global.Config.Consumer.Redis.Addr,
-	Password: global.Config.Consumer.Redis.Password,
-}
-
-func RedisConsumer() queue.IConsumer {
-	return redisconsumer.New(
-		redisconsumer.WithLogger(global.Log),
-		redisconsumer.WithHandler(cnf, "", func(val string) error {
-			global.Log.Infof("[consumer] redis consumer receive: %s", val)
-			return nil
-		}))
-}
+// RedisHandler Redis 消费者处理器
+var RedisHandler mq.IHandler = mq.FuncHandler(func(ctx context.Context, msg mq.Message) error {
+	slog.Info("redis consumer receive", "data", string(msg.Data))
+	return nil
+})

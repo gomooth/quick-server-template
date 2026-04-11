@@ -3,15 +3,15 @@ package user
 import (
 	"context"
 	"server-api/global/ecode"
-	"server-api/repository/platform"
-	"server-api/repository/platform/dao"
-	"server-api/repository/types/platformfilter"
+	"server-api/repository/platform/pdao"
+	"server-api/repository/platform/pfilter"
+	"server-api/repository/platform/pmodel"
 
-	"github.com/gomooth/pkg/framework/dbfilter"
+	"github.com/gomooth/pkg/framework/dbquery"
 	"github.com/gomooth/utils/userutil"
 
-	"github.com/save95/xerror"
-	"github.com/save95/xerror/xcode"
+	"github.com/gomooth/xerror"
+	"github.com/gomooth/xerror/xcode"
 
 	"github.com/zywaited/xcopy"
 )
@@ -20,12 +20,13 @@ type service struct {
 }
 
 func (s *service) Paginate(ctx context.Context, in *paginateRequest) ([]*entity, uint, error) {
-	records, total, err := dao.NewVWUser().Paginate(ctx, in.Start, in.Limit, dbfilter.New(
-		platformfilter.User{
+	records, total, err := pdao.NewVWUser().Paginate(ctx, dbquery.NewQuery(
+		pfilter.User{
 			Account: in.Account,
 		},
-		dbfilter.WithSorts(in.Sort)),
-	)
+		dbquery.WithSorts[pfilter.User](in.Sort),
+		dbquery.WithOffsetPage[pfilter.User](in.Start, in.Limit),
+	))
 	if nil != err {
 		return nil, 0, err
 	}
@@ -40,29 +41,29 @@ func (s *service) Paginate(ctx context.Context, in *paginateRequest) ([]*entity,
 
 func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error) {
 	if err := in.Validate(); nil != err {
-		return nil, xerror.WrapWithXCodeStatus(err, xcode.RequestParamError)
+		return nil, xerror.WrapStatus(err, xcode.RequestParamError)
 	}
 
 	// 判断重复
-	_, err := dao.NewVWUser().FirstByAccount(ctx, in.Account)
+	_, err := pdao.NewVWUser().FirstByAccount(ctx, in.Account)
 	if nil == err || !xerror.IsXCode(err, xcode.DBRecordNotFound) {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorRecordExist)
 	}
 
-	pwd, err := userutil.NewHasher().Sum(in.Password)
+	pwd, err := userutil.Sum(in.Password)
 	if nil != err {
 		return nil, xerror.Wrap(err, "生成密码失败")
 	}
 
-	record := platform.User{
+	record := pmodel.User{
 		Account:   in.Account,
 		Nickname:  in.Nickname,
 		AvatarURL: in.AvatarURL,
 		Password:  pwd,
 		State:     1,
 	}
-	stat := platform.UserStat{}
-	if err := dao.NewUser().Create(ctx, in.GetGenres(), &record, &stat); nil != err {
+	stat := pmodel.UserStat{}
+	if err := pdao.NewUser().Create(ctx, in.GetGenres(), &record, &stat); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorSavedData)
 	}
 
@@ -76,13 +77,13 @@ func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error
 
 func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*entity, error) {
 	if id == 0 {
-		return nil, xerror.WithXCode(ecode.ErrorBadRequest)
+		return nil, xerror.NewXCode(ecode.ErrorBadRequest)
 	}
 	if err := in.Validate(); nil != err {
-		return nil, xerror.WrapWithXCodeStatus(err, xcode.RequestParamError)
+		return nil, xerror.WrapStatus(err, xcode.RequestParamError)
 	}
 
-	record, err := dao.NewVWUser().First(ctx, id, "UserRoles")
+	record, err := pdao.NewVWUser().First(ctx, id, "UserRoles")
 	if nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorRequestData)
 	}
@@ -95,7 +96,7 @@ func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*enti
 	// 修改名称
 	if record.Account != in.Account {
 		// 判断重复
-		_, err := dao.NewVWUser().FirstByAccount(ctx, in.Account)
+		_, err := pdao.NewVWUser().FirstByAccount(ctx, in.Account)
 		if nil == err || !xerror.IsXCode(err, xcode.DBRecordNotFound) {
 			return nil, xerror.WrapWithXCode(err, ecode.ErrorRecordExist)
 		}
@@ -109,14 +110,14 @@ func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*enti
 
 	// 如果密码不为空，则修改密码
 	if len(in.Password) != 0 {
-		pwd, err := userutil.NewHasher().Sum(in.Password)
+		pwd, err := userutil.Sum(in.Password)
 		if nil != err {
 			return nil, xerror.Wrap(err, "生成密码失败")
 		}
 		record.Password = pwd
 	}
 
-	if err := dao.NewUser().Update(ctx, record.ToUser(), roles); nil != err {
+	if err := pdao.NewUser().Update(ctx, record.ToUser(), roles); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorSavedData)
 	}
 

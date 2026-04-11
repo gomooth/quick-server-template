@@ -3,7 +3,7 @@ package system
 import (
 	"io"
 	"server-api/app/openapi/internal/helper"
-	"server-api/repository/platform/dao"
+	"server-api/repository/platform/pdao"
 	"strings"
 	"time"
 
@@ -11,7 +11,7 @@ import (
 
 	"github.com/gomooth/pkg/http/restful"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type Controller struct{}
@@ -36,7 +36,7 @@ func (c Controller) Sign(ctx *gin.Context) {
 		return
 	}
 
-	app, err := dao.NewOpenAPP().FirstByAppID(ctx, h.AppID)
+	app, err := pdao.NewOpenAPP().FirstByAppID(ctx, h.AppID)
 	if nil != err {
 		rru.WithError(xerror.New("获取应用信息失败"))
 		return

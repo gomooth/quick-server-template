@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/save95/xerror"
-	"github.com/save95/xerror/xcode"
+	"github.com/gomooth/xerror"
+	"github.com/gomooth/xerror/xcode"
 )
 
 type service struct {
@@ -32,7 +32,7 @@ type service struct {
 
 func (s *service) UploadPublic(ctx *gin.Context, in *uploadRequest) (string, error) {
 	if err := in.Validate(); nil != err {
-		return "", xerror.WithXCodeMessage(xcode.RequestParamError, err.Error())
+		return "", xerror.NewXCode(xcode.RequestParamError, err.Error())
 	}
 
 	// 生成随机文件名
@@ -55,18 +55,30 @@ func (s *service) UploadPublic(ctx *gin.Context, in *uploadRequest) (string, err
 		SetName(name)
 
 	// 创建目录
-	_ = os.MkdirAll(store.Dir(), os.ModePerm)
+	dir, err := store.Dir()
+	if err != nil {
+		return "", xerror.Wrap(err, "获取存储目录失败")
+	}
+	_ = os.MkdirAll(dir, os.ModePerm)
 
-	if err := ctx.SaveUploadedFile(in.File, store.Path()); nil != err {
+	filePath, err := store.Path()
+	if err != nil {
+		return "", xerror.Wrap(err, "获取存储路径失败")
+	}
+	if err := ctx.SaveUploadedFile(in.File, filePath); nil != err {
 		return "", errors.Wrap(err, "文件保存失败")
 	}
 
-	return store.URLWithHost(global.Config.Server.HTTP.Resource.Host), nil
+	url, err := store.URLWithHost(global.Config.Server.HTTP.Resource.Host)
+	if err != nil {
+		return "", xerror.Wrap(err, "获取文件URL失败")
+	}
+	return url, nil
 }
 
 func (s *service) UploadPublicBase64(_ *gin.Context, in *base64Request) (string, error) {
 	if err := in.Validate(); nil != err {
-		return "", xerror.WithXCodeMessage(xcode.RequestParamError, err.Error())
+		return "", xerror.NewXCode(xcode.RequestParamError, err.Error())
 	}
 
 	// 生成随机文件名
@@ -89,7 +101,11 @@ func (s *service) UploadPublicBase64(_ *gin.Context, in *base64Request) (string,
 		SetName(name)
 
 	// 创建目录
-	_ = os.MkdirAll(store.Dir(), os.ModePerm)
+	dir, err := store.Dir()
+	if err != nil {
+		return "", xerror.Wrap(err, "获取存储目录失败")
+	}
+	_ = os.MkdirAll(dir, os.ModePerm)
 
 	switch in.Genre {
 	case "pictures":
@@ -104,7 +120,11 @@ func (s *service) UploadPublicBase64(_ *gin.Context, in *base64Request) (string,
 			return "", xerror.Wrap(err, "图片解析失败")
 		}
 
-		out, err := os.Create(store.Path())
+		filePath, pathErr := store.Path()
+		if pathErr != nil {
+			return "", xerror.Wrap(pathErr, "获取存储路径失败")
+		}
+		out, err := os.Create(filePath)
 		if nil != err {
 			return "", xerror.Wrap(err, "写入文件失败")
 		}
@@ -117,12 +137,16 @@ func (s *service) UploadPublicBase64(_ *gin.Context, in *base64Request) (string,
 		}
 	}
 
-	return store.URLWithHost(global.Config.Server.HTTP.Resource.Host), nil
+	url, err := store.URLWithHost(global.Config.Server.HTTP.Resource.Host)
+	if err != nil {
+		return "", xerror.Wrap(err, "获取文件URL失败")
+	}
+	return url, nil
 }
 
 func (s *service) UploadPublicChunk(gtx *gin.Context, in *chunkRequest) (*chunkResponse, error) {
 	if err := in.Validate(); nil != err {
-		return nil, xerror.WithXCodeMessage(xcode.RequestParamError, err.Error())
+		return nil, xerror.NewXCode(xcode.RequestParamError, err.Error())
 	}
 
 	now := time.Now()
@@ -144,9 +168,17 @@ func (s *service) UploadPublicChunk(gtx *gin.Context, in *chunkRequest) (*chunkR
 	tmpStore = tmpStore.AppendDir(in.Genre, strconv.Itoa(in.FileId)).SetName(chunkName)
 
 	// 创建目录
-	_ = os.MkdirAll(tmpStore.Dir(), os.ModePerm)
+	tmpDir, err := tmpStore.Dir()
+	if err != nil {
+		return nil, xerror.Wrap(err, "获取临时目录失败")
+	}
+	_ = os.MkdirAll(tmpDir, os.ModePerm)
 
-	if err := gtx.SaveUploadedFile(in.File, tmpStore.Path()); nil != err {
+	tmpPath, err := tmpStore.Path()
+	if err != nil {
+		return nil, xerror.Wrap(err, "获取临时路径失败")
+	}
+	if err := gtx.SaveUploadedFile(in.File, tmpPath); nil != err {
 		return nil, err
 	}
 
@@ -168,9 +200,17 @@ func (s *service) UploadPublicChunk(gtx *gin.Context, in *chunkRequest) (*chunkR
 			SetName(name)
 
 		// 创建目录
-		_ = os.MkdirAll(store.Dir(), os.ModePerm)
+		storeDir, dirErr := store.Dir()
+		if dirErr != nil {
+			return nil, xerror.Wrap(dirErr, "获取存储目录失败")
+		}
+		_ = os.MkdirAll(storeDir, os.ModePerm)
 
-		fd, err := os.OpenFile(store.Path(), os.O_WRONLY|os.O_CREATE, 0666)
+		storePath, pathErr := store.Path()
+		if pathErr != nil {
+			return nil, xerror.Wrap(pathErr, "获取存储路径失败")
+		}
+		fd, err := os.OpenFile(storePath, os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
 			return nil, xerror.Wrap(err, "存储文件时，打开失败")
 		}
@@ -180,7 +220,7 @@ func (s *service) UploadPublicChunk(gtx *gin.Context, in *chunkRequest) (*chunkR
 
 		for i := 0; i < total; i++ {
 			chunkName := fmt.Sprintf(chunkNameFormat, i)
-			tmpFile := path.Join(tmpStore.Dir(), chunkName)
+			tmpFile := path.Join(tmpDir, chunkName)
 			err := fsutil.BlockRead(tmpFile, func(data []byte) error {
 				_, err := fd.Write(data)
 				return err
@@ -191,10 +231,14 @@ func (s *service) UploadPublicChunk(gtx *gin.Context, in *chunkRequest) (*chunkR
 		}
 
 		// 删除临时目录
-		_ = os.RemoveAll(tmpStore.Dir())
+		_ = os.RemoveAll(tmpDir)
 
 		res.Over = true
-		res.Url = store.URLWithHost(global.Config.Server.HTTP.Resource.Host)
+		url, urlErr := store.URLWithHost(global.Config.Server.HTTP.Resource.Host)
+		if urlErr != nil {
+			return nil, xerror.Wrap(urlErr, "获取文件URL失败")
+		}
+		res.Url = url
 	}
 
 	return res, nil

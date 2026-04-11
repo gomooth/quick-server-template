@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"server-api/app/consumer/internal/helper"
 	"server-api/global/kafka/topic"
-	"server-api/internal/testhelper"
+	"server-api/app/consumer/internal/helper"
+	"server-api/testhelper"
 )
 
 func TestMain(m *testing.M) {

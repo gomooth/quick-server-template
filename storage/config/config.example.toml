@@ -95,7 +95,7 @@ secret = "go-quick-server-template"
         [[data.persistent.connects]]
         name        = "platform"
         type        = "mysql"
-        dsn         = "user:password@tcp(ip:prot)/database?charset=utf8mb4&parseTime=true&loc=Local"
+        dsn         = "user:password@tcp(ip:prot)/platform?charset=utf8mb4&parseTime=true&loc=Local"
         max_idle    = 10
         max_open    = 100
         log_mode    = true
@@ -105,6 +105,15 @@ secret = "go-quick-server-template"
         name        = "localPlatform"
         type        = "sqlit"
         dsn         = "config/main.db?charset=utf8mb4&parseTime=true&loc=Local"
+        max_idle    = 10
+        max_open    = 100
+        log_mode    = true
+        max_life_time = 30
+
+        [[data.persistent.connects]]
+        name        = "platform"
+        type        = "postgres"
+        dsn         = "host=localhost user=postgres password=postgres dbname=platform port=9920 sslmode=disable TimeZone=Asia/Shanghai"
         max_idle    = 10
         max_open    = 100
         log_mode    = true

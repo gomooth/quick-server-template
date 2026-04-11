@@ -1,6 +1,6 @@
 package ecode
 
-import "github.com/save95/xerror/xcode"
+import "github.com/gomooth/xerror/xcode"
 
 var (
 	ErrorBadRequest   = xcode.NewWithMessage(3001, "请求数据错误或不存在")

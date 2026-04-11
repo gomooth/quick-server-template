@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gomooth/pkg/framework/dbmanager"
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 
 	"gorm.io/gorm"
 )
@@ -38,4 +38,28 @@ func (db databases) Get(name string) (*gorm.DB, error) {
 	}
 
 	return c, nil
+}
+
+func (db databases) Unregister(name string) error {
+	if _, ok := dbs[name]; !ok {
+		return xerror.New(fmt.Sprintf("%s database not registered", name))
+	}
+	delete(dbs, name)
+	return nil
+}
+
+func (db databases) CloseAll() error {
+	var errs []error
+	for name, dbc := range dbs {
+		if sqlDB, err := dbc.DB(); err == nil {
+			if err := sqlDB.Close(); err != nil {
+				errs = append(errs, xerror.Wrap(err, fmt.Sprintf("close %s database failed", name)))
+			}
+		}
+		delete(dbs, name)
+	}
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
 }

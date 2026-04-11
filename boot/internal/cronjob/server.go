@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	jobapp "server-api/app/job"
+	"log/slog"
 	"server-api/global"
-	"server-api/repository/platform"
+	jobapp "server-api/app/job"
+	"server-api/repository/platform/pmodel"
 	"strings"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 
 	"github.com/gomooth/pkg/framework/app"
 	"github.com/gomooth/pkg/job"
@@ -29,61 +30,63 @@ func New(ctx context.Context) app.IApp {
 	}
 }
 
-func (s server) Start() error {
-	global.Log.Infof("cronjob server starting...")
+func (s server) Start(_ context.Context) error {
+	slog.Info("cronjob server starting...")
 
 	// 注册定时脚本
 	jobapp.CronRegister(s)
 
 	s.c.Start()
-	global.Log.Infof("cronjob server started")
+	slog.Info("cronjob server started")
 	return nil
 }
 
-func (s server) Register(spec string, cmd job.ICommandJob) {
+func (s server) Register(_ context.Context, spec string, cmd job.ICommandJob) {
 	wrapper := job.NewCronJobWrapper(
-		job.WrapWithContext(s.ctx),
 		job.WrapWithLogger(global.Log),
 		job.WrapWithFailedSaver(s.failedSaver),
 	)
 
-	eid, err := s.c.AddJob(spec, wrapper.FromCommandJob(cmd))
+	eid, err := s.c.AddJob(spec, wrapper.FromCommandJob(s.ctx, cmd))
 	if nil != err {
-		global.Log.Errorf("cronjob register failed, err=%+v", err)
+		slog.Error("cronjob register failed", "err", err)
 		return
 	}
 
 	name := strings.Trim(fmt.Sprintf("%T", cmd), "*")
-	global.Log.Infof("cronjob register success, name=%s, entryID=%d", name, int(eid))
+	slog.Info("cronjob register success", "name", name, "entryID", int(eid))
 	return
 }
 
 func (s server) failedSaver(jobName string, in []string, err error) {
 	db, derr := global.Database().Get("platform")
 	if nil != derr {
-		global.Log.Errorf("cronjob failed saver get db failed, err=%+v", derr)
+		slog.Error("cronjob failed saver get db failed", "err", derr)
 		return
 	}
 
 	argsBytes, _ := json.Marshal(in)
 
-	record := &platform.FailedJob{
+	payload := xerror.ParsePayload(err)
+	payloadBytes, _ := json.Marshal(payload)
+
+	record := &pmodel.FailedJob{
 		JobName:     jobName,
 		JobArgs:     string(argsBytes),
-		Payload:     xerror.ParsePayload(err),
-		Errors:      xerror.FormatStackTrace(err),
+		Payload:     string(payloadBytes),
+		Errors:      xerror.StackTrace(err),
 		Handled:     false,
 		HandledAt:   nil,
 		Compensated: false,
 	}
 	if err := db.Create(record).Error; nil != err {
-		global.Log.Errorf("cronjob failed saver failed, err=%+v", err)
+		slog.Error("cronjob failed saver failed", "err", err)
 		return
 	}
 }
 
-func (s server) Shutdown() error {
-	defer global.Log.Infof("cronjob server stop")
+func (s server) Shutdown(_ context.Context) error {
+	defer slog.Info("cronjob server stop")
 
 	if s.c != nil {
 		s.c.Stop()
@@ -91,7 +94,7 @@ func (s server) Shutdown() error {
 
 	// 释放资源
 	if err := jobapp.Release(); err != nil {
-		global.Log.Errorf("cronjob release failed, err=%+v", err)
+		slog.Error("cronjob release failed", "err", err)
 	}
 
 	return nil

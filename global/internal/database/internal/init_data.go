@@ -31,7 +31,7 @@ func (m *initData) AdminUser(account, password string) error {
 
 	genre := uint8(1)
 
-	pwd, err := userutil.NewHasher().Sum(password)
+	pwd, err := userutil.Sum(password)
 	if nil != err {
 		return errors.Wrap(err, "make user password failed")
 	}

@@ -3,7 +3,7 @@ package auth
 import (
 	"server-api/global"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 )
 
 type createTokenRequest struct {

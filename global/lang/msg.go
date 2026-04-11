@@ -1,6 +1,6 @@
 package lang
 
-import "github.com/save95/xerror/xcode"
+import "github.com/gomooth/xerror/xcode"
 
 var (
 	TestContent = xcode.NewWithMessage(100000, "测试语言包内容")

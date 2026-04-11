@@ -1,10 +1,14 @@
 package example
 
 import (
-	"server-api/global"
+	"context"
+	"log/slog"
+
+	"github.com/gomooth/pkg/mq"
 )
 
-func KafkaConsumer(topicName string, msg []byte) error {
-	global.Log.Debugf("example kafka consumer handle, only print. topic=%s, msg=%s", topicName, msg)
+// KafkaConsumer Kafka 消费者处理器
+var KafkaConsumer mq.IHandler = mq.FuncHandler(func(ctx context.Context, msg mq.Message) error {
+	slog.Debug("example kafka consumer handle, only print", "queue", msg.Queue, "msg", string(msg.Data))
 	return nil
-}
+})

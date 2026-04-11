@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"math"
+	"server-api/global"
 	"server-api/app/openapi/internal/helper"
 	"server-api/app/openapi/internal/helper/ecode"
-	"server-api/global"
-	"server-api/repository/platform/cache"
-	"server-api/repository/types/platformtypes"
+	"server-api/repository/platform/pattr"
+	"server-api/repository/platform/pcache"
 	"strings"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 	"github.com/gomooth/pkg/http/restful"
 	"github.com/gomooth/utils/valutil"
 
-	"github.com/save95/xerror"
-	"github.com/save95/xerror/xcode"
+	"github.com/gomooth/xerror"
+	"github.com/gomooth/xerror/xcode"
 )
 
 func Auth() gin.HandlerFunc {
@@ -53,7 +54,7 @@ func auth(withoutSign bool) gin.HandlerFunc {
 		if !withoutSign {
 			requestAt := time.Unix(int64(valutil.Int(h.Timestamp)), 0)
 			if math.Abs(time.Now().Sub(requestAt).Minutes()) > 5 {
-				rru.WithError(xerror.WithXCode(ecode.RequestExpired))
+				rru.WithError(xerror.NewXCode(ecode.RequestExpired))
 				return
 			}
 		}
@@ -68,18 +69,18 @@ func auth(withoutSign bool) gin.HandlerFunc {
 		}
 
 		// 获取应用
-		app, err := cache.NewOpenAPP().FirstByAppID(c, h.AppID)
+		app, err := pcache.NewOpenAPP().FirstByAppID(c, h.AppID)
 		if err != nil {
 			if xerror.IsXCode(err, xcode.DBRecordNotFound) {
-				rru.WithError(xerror.WithXCode(ecode.OpenAPIClosed))
+				rru.WithError(xerror.NewXCode(ecode.OpenAPIClosed))
 				return
 			}
 
 			rru.WithError(xerror.WrapWithXCode(err, ecode.InternalError))
 			return
 		}
-		if app.State != platformtypes.OpenAPPStateNormal {
-			rru.WithError(xerror.WithXCode(ecode.OpenAPIClosed))
+		if app.State != pattr.OpenAPPStateNormal {
+			rru.WithError(xerror.NewXCode(ecode.OpenAPIClosed))
 			return
 		}
 
@@ -112,9 +113,9 @@ func auth(withoutSign bool) gin.HandlerFunc {
 		sign := helper.Sign(h.AppID, app.AppSecret, h.Timestamp, path, qs, body)
 		if h.Sign != sign.Signature {
 			if !global.Env().IsProd() {
-				global.Log.Debugf("sign failed: t=%s, input=%s, sign=%s", h.Timestamp, h.Sign, sign.Signature)
+				slog.Debug("sign failed", "timestamp", h.Timestamp, "input", h.Sign, "sign", sign.Signature)
 			}
-			rru.WithError(xerror.WithXCode(ecode.SignError))
+			rru.WithError(xerror.NewXCode(ecode.SignError))
 			return
 		}
 	}

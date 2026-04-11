@@ -1,9 +1,8 @@
 package route
 
 import (
-	"server-api/app/http/internal/api/auth"
-	"server-api/app/http/internal/helper"
 	"server-api/global"
+	"server-api/app/http/internal/api/auth"
 
 	"github.com/gin-gonic/gin"
 
@@ -28,7 +27,8 @@ func RegisterAuth(router *gin.Engine) {
 		"/auth",
 		middleware.RESTFul(global.ApiVersionLatest),
 		middleware.JWTStatefulWith(
-			helper.JWTOption(false),
+			[]byte(global.Config.App.Secret),
+			global.NewRole,
 			jwtstore.NewMultiRedisStore(global.SessionStoreClient), // 多地登录
 		),
 		middleware.WithRole(global.RoleUser),

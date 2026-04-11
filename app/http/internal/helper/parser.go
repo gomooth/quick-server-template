@@ -2,19 +2,19 @@ package helper
 
 import (
 	"context"
+	"log/slog"
 	"server-api/app/http/internal/helper/apptypes"
-	"server-api/global"
 
 	"github.com/gomooth/pkg/http/httpcontext"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 
 	"github.com/gin-gonic/gin"
 )
 
 // MustParseUser 从上下文中解析授权用户，否则报错
 func MustParseUser(ctx context.Context) (*httpcontext.User, error) {
-	htx, err := httpcontext.MustParse(ctx)
+	htx, err := httpcontext.Parse(ctx)
 	if nil != err {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func MustParseUser(ctx context.Context) (*httpcontext.User, error) {
 func ParseUser(ctx context.Context) *httpcontext.User {
 	user, err := MustParseUser(ctx)
 	if nil != err {
-		global.Log.Warningf("ParseUser: parse failed, err=%+v", err)
+		slog.Warn("ParseUser: parse failed", "err", err)
 		return &httpcontext.User{}
 	}
 
@@ -58,7 +58,7 @@ func MustParseAPPHeader(ctx context.Context) (*apptypes.APPHeader, error) {
 func ParseAPPHeader(ctx context.Context) *apptypes.APPHeader {
 	h, err := MustParseAPPHeader(ctx)
 	if err != nil {
-		global.Log.Warningf("ParseAppHeader: parse failed, err=%+v", err)
+		slog.Warn("ParseAppHeader: parse failed", "err", err)
 		return nil
 	}
 

@@ -2,60 +2,69 @@ package consumer
 
 import (
 	"context"
-	"server-api/app/consumer"
+	"log/slog"
 	"server-api/global"
+	"server-api/app/consumer"
 
-	"github.com/gomooth/pkg/framework/app"
-	"github.com/gomooth/pkg/mq/queue"
+	"github.com/gomooth/pkg/mq"
+	mqredis "github.com/gomooth/pkg/mq/redis"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 type singleServer struct {
-	ctx context.Context
-	svr app.IApp
+	svr mq.IConsumeServer
 }
 
-func newSingle(ctx context.Context) app.IApp {
-	return &singleServer{
-		ctx: ctx,
-	}
+func newSingle() *singleServer {
+	return &singleServer{}
 }
 
-func (s *singleServer) Start() error {
-	svr := queue.NewServer(s.ctx)
+func (s *singleServer) Start(ctx context.Context) error {
+	rc := &global.Config.Consumer.Redis
+	svr := mqredis.NewConsumer(
+		rc.Addr,
+		mqredis.WithConsumerRedisConfig(&goredis.Options{
+			Addr:     rc.Addr,
+			Password: rc.Password,
+			DB:       rc.DB,
+		}),
+	)
 
 	// 注册服务
-	consumer.SingleConsumerRegister(svr)
-
-	count := svr.Count()
-	if count == 0 {
-		global.Log.Infof("single-consumer server no register consumer, skip")
-		return nil
-	}
-
-	global.Log.Infof("single-consumer server starting, %d consumer ...", count)
-
-	if err := svr.Start(); nil != err {
-		global.Log.Errorf("single-consumer server start error, %s", err.Error())
+	if err := consumer.SingleConsumerRegister(svr); err != nil {
 		return err
 	}
 
-	global.Log.Info("single-consumer server started")
+	count := svr.Count()
+	if count == 0 {
+		slog.Info("single-consumer server no register consumer, skip")
+		return nil
+	}
+
+	slog.Info("single-consumer server starting", "count", count)
+
+	if err := svr.Start(ctx); nil != err {
+		slog.Error("single-consumer server start error", "err", err)
+		return err
+	}
+
+	slog.Info("single-consumer server started")
 	s.svr = svr
 	return nil
 }
 
-func (s *singleServer) Shutdown() error {
-	defer global.Log.Infof("single-consumer server stoped")
+func (s *singleServer) Shutdown(ctx context.Context) error {
+	defer slog.Info("single-consumer server stopped")
 
 	if s.svr != nil {
-		if err := s.svr.Shutdown(); nil != err {
+		if err := s.svr.Shutdown(ctx); err != nil {
 			return err
 		}
 	}
 
 	// 释放资源
 	if err := consumer.SingleConsumerRelease(); err != nil {
-		global.Log.Errorf("single-consumer release failed, %+v", err)
+		slog.Error("single-consumer release failed", "err", err)
 	}
 
 	return nil

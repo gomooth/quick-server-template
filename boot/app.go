@@ -2,17 +2,18 @@ package boot
 
 import (
 	"context"
+	"log/slog"
+	"server-api/global"
 	"server-api/boot/internal/consumer"
 	"server-api/boot/internal/cronjob"
 	"server-api/boot/internal/http"
 	"server-api/boot/internal/openapi"
 	"server-api/boot/internal/watcher"
-	"server-api/global"
 	"server-api/service/lang"
 
 	"github.com/gomooth/pkg/framework/app"
 
-	"github.com/save95/xerror"
+	"github.com/gomooth/xerror"
 
 	"github.com/fsnotify/fsnotify"
 
@@ -61,7 +62,7 @@ func Boot(cnf Param) error {
 
 	// 注册 配置文件监听器
 	if global.Config.App.WatchConfigEnabled {
-		global.Log.Debugf("watch config file charge enabled")
+		slog.Debug("watch config file charge enabled")
 		localname, _ := global.GetConfigFilename(cnf.ConfigFilename)
 		apps.Register(watcher.NewFileServer(ctx, localname, func(ev fsnotify.Event) error {
 			// 配置文件被修改，则更新全局配置
@@ -86,7 +87,7 @@ func Boot(cnf Param) error {
 		}
 	}
 
-	apps.Run()
+	apps.Run(ctx)
 
 	return nil
 }

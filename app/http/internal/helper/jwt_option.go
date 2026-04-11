@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"log/slog"
 	"server-api/global"
 	"time"
 
@@ -14,20 +15,16 @@ import (
 
 // JWTOption JWT 相关配置
 func JWTOption(refresh bool) *jwt.Option {
-	opt := &jwt.Option{
-		RoleConvert:     global.NewRole,
-		RefreshDuration: 0, // 0-不自动刷新
-		Secret:          []byte(global.Config.App.Secret),
-	}
-
 	refreshDuration := time.Duration(0)
 	if refresh {
 		refreshDuration = 12 * time.Hour
 	}
 
-	opt.RefreshDuration = refreshDuration
-
-	return opt
+	return jwt.NewOption(
+		[]byte(global.Config.App.Secret),
+		global.NewRole,
+		jwt.WithRefreshDuration(refreshDuration),
+	)
 }
 
 // SessionStore session 存储
@@ -44,11 +41,12 @@ func sessionRedisStore(opt middleware.SessionOption) sessions.Store {
 		int(opt.MaxAge.Minutes()), // 有效时间，分钟
 		"tcp",
 		global.Config.Data.Redis.Addr,
+		"", // username
 		global.Config.Data.Redis.Password,
 		[]byte(global.Config.App.Secret),
 	)
 	if nil != err {
-		global.Log.Errorf("session redis store failed: %+v", err)
+		slog.Error("session redis store failed", "err", err)
 	}
 
 	return store

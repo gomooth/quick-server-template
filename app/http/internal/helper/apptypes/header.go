@@ -9,7 +9,7 @@ import (
 // headerI18N 国际化相关参数
 // 其值为标准的国际化标识，详细参考：[附：国际化语言标识](../docs/i18n.md)
 type headerI18N struct {
-	UseLanguage string `header:"X-Language" form:"ul"` // 使用语言，默认是英文
+	UseLanguage string `header:"X-Language" form:"lang"` // 使用语言，默认是英文
 }
 
 func (c headerI18N) Language() language.Tag {

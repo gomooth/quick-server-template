@@ -1,9 +1,10 @@
 package example
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"server-api/app/job/internal/helper"
-	"server-api/global"
 
 	"github.com/gomooth/pkg/job"
 )
@@ -15,8 +16,8 @@ func NewSimpleJob() job.ICommandJob {
 	return &simpleJob{}
 }
 
-func (s simpleJob) Run(args ...string) error {
-	global.Log.Debugf("example simple job, only print. args=%#v", args)
+func (s simpleJob) Run(_ context.Context, args ...string) error {
+	slog.Debug("example simple job, only print", "args", args)
 
 	params := helper.NewCMDArgs(args...)
 	version := params.Get("ver", "version")

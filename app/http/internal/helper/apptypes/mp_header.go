@@ -5,6 +5,6 @@ type MPHeader struct {
 	headerI18N
 	headerUTM
 
-	MPPlatform string `header:"X-Mp-Platform" form:"mpp"`
-	MPAppID    string `header:"X-Mp-App-Id" form:"mpi"`
+	MPPlatform string `header:"X-Mp-Platform" form:"h_mpp"`
+	MPAppID    string `header:"X-Mp-App-Id" form:"h_mpi"`
 }

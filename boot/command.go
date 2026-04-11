@@ -2,10 +2,10 @@ package boot
 
 import (
 	"context"
-	"server-api/boot/internal/command"
+	"log/slog"
 
+	"server-api/boot/internal/command"
 	jobapp "server-api/app/job"
-	"server-api/global"
 
 	"github.com/pkg/errors"
 )
@@ -25,6 +25,6 @@ func Command(cnf Param) error {
 	// 执行命令
 	cmd.Execute(conf.Name, conf.Args...)
 
-	global.Log.Infof("[%s] command done", conf.Name)
+	slog.Info("command done", "name", conf.Name)
 	return nil
 }
