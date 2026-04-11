@@ -3,38 +3,23 @@ package consumer
 import (
 	"context"
 	"fmt"
-	"log"
-	"os/exec"
-	"server-api/app/consumer/internal/helper"
-	"server-api/global"
-	"server-api/global/kafka/topic"
+	"os"
 	"testing"
 
-	"github.com/gomooth/utils/fsutil"
+	"server-api/app/consumer/internal/helper"
+	"server-api/global/kafka/topic"
+	"server-api/internal/testhelper"
 )
 
-func init() {
-	if !fsutil.PathExist("storage") {
-		cmd := exec.Command("ln", "-s", "../../storage/", "storage")
-		if err := cmd.Run(); nil != err {
-			log.Fatal(err)
-		}
+func TestMain(m *testing.M) {
+	// Setup test environment with database support
+	if err := testhelper.SetupTestWithDB(); err != nil {
+		panic(err)
 	}
 
-	// 加载配置
-	if err := global.ParseConfig("../../config/config.toml"); nil != err {
-		log.Fatal(err)
-	}
-
-	// 初始化日志
-	if err := global.InitLogger("test"); err != nil {
-		log.Fatal(err)
-	}
-
-	// 初始化db
-	if err := global.InitDataBase(); err != nil {
-		log.Fatal(err)
-	}
+	code := m.Run()
+	testhelper.Cleanup()
+	os.Exit(code)
 }
 
 func TestKafkaPusherExample(t *testing.T) {
