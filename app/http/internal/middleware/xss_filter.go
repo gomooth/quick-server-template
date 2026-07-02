@@ -18,5 +18,7 @@ func XSSFilter() gin.HandlerFunc {
 		middleware.WithXSSRoutePolicy("/callback/", xss.PolicyNone),
 		middleware.WithXSSRoutePolicy("/endpoint", xss.PolicyNone),
 		middleware.WithXSSRoutePolicy("/ping", xss.PolicyNone),
+		middleware.WithXSSRoutePolicy("/healthz", xss.PolicyNone),
+		middleware.WithXSSRoutePolicy("/readyz", xss.PolicyNone),
 	)
 }

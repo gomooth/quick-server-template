@@ -2,7 +2,7 @@ package http
 
 import (
 	"server-api/global"
-	"server-api/app/http/internal/api/ping"
+	"server-api/app/http/internal/api/health"
 	"server-api/app/http/internal/route"
 	"server-api/app/http/internal/route/admin"
 	"server-api/app/http/internal/route/user"
@@ -19,8 +19,14 @@ func RouteRegister(router *gin.Engine) {
 	// 静态文件
 	router.Static("/storage", "storage/public")
 
-	router.Any("/ping", new(ping.Controller).Ping)
-	router.Any("/endpoint", middleware.HttpPrinter(global.Log), new(ping.Controller).Endpoint)
+	// 健康检查
+	healthCtrl := new(health.Controller)
+	router.GET("/ping", healthCtrl.Ping)
+	router.GET("/healthz", healthCtrl.Liveness)
+	router.GET("/readyz", healthCtrl.Readiness)
+
+	// 数据接收端点
+	router.Any("/endpoint", middleware.HttpPrinter(global.Log), healthCtrl.Endpoint)
 
 	// 注册路由
 	admin.Register(router)
@@ -33,4 +39,3 @@ func Release() error {
 
 	return nil
 }
-
