@@ -1,3 +1,8 @@
+---
+paths:
+  - "/app/consumer/**/*"
+---
+
 # 消费者约定
 
 ## NOTE 注释约定
@@ -17,6 +22,8 @@ consumer/
 └── email/
     └── redis_consumer.go
 ```
+
+## 开发约定
 
 ## 统一处理器接口
 
