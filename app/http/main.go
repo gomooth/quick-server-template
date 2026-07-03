@@ -3,7 +3,6 @@ package http
 import (
 	"server-api/global"
 	"server-api/app/http/internal/api/health"
-	"server-api/app/http/internal/route"
 	"server-api/app/http/internal/route/admin"
 	"server-api/app/http/internal/route/user"
 
@@ -31,7 +30,6 @@ func RouteRegister(router *gin.Engine) {
 	// 注册路由
 	admin.Register(router)
 	user.Register(router)
-	route.RegisterFile(router)
 }
 
 // Release 释放资源

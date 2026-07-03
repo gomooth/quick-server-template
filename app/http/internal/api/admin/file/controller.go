@@ -1,18 +1,16 @@
 package file
 
 import (
+	"server-api/global/ecode"
 	"server-api/service/lang"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gomooth/pkg/http/restful"
 	"github.com/gomooth/utils/valutil"
-
-	"github.com/gin-gonic/gin"
-
-	"github.com/pkg/errors"
+	"github.com/gomooth/xerror"
 )
 
-type Controller struct {
-}
+type Controller struct{}
 
 func (c *Controller) UploadPublic(ctx *gin.Context) {
 	rru := restful.NewResponse(
@@ -28,15 +26,18 @@ func (c *Controller) UploadPublic(ctx *gin.Context) {
 		File:     file,
 	}
 
-	url, err := new(service).UploadPublic(ctx, &in)
+	targetPath, url, err := new(service).UploadPublic(ctx.Request.Context(), &in)
 	if nil != err {
 		rru.WithError(err)
 		return
 	}
 
-	rru.Retrieve(map[string]string{
-		"url": url,
-	})
+	if err := ctx.SaveUploadedFile(in.File, targetPath); nil != err {
+		rru.WithError(xerror.WrapWithXCode(err, ecode.ErrorFileSave))
+		return
+	}
+
+	rru.Retrieve(&uploadEntity{URL: url})
 }
 
 func (c *Controller) UploadPublicBase64(ctx *gin.Context) {
@@ -53,15 +54,13 @@ func (c *Controller) UploadPublicBase64(ctx *gin.Context) {
 
 	in.Genre = ctx.Param("genre")
 	in.Business = ctx.Param("business")
-	url, err := new(service).UploadPublicBase64(ctx, &in)
+	url, err := new(service).UploadPublicBase64(ctx.Request.Context(), &in)
 	if nil != err {
 		rru.WithError(err)
 		return
 	}
 
-	rru.Retrieve(map[string]string{
-		"url": url,
-	})
+	rru.Retrieve(&uploadEntity{URL: url})
 }
 
 func (c *Controller) UploadPublicChunk(ctx *gin.Context) {
@@ -70,9 +69,8 @@ func (c *Controller) UploadPublicChunk(ctx *gin.Context) {
 		restful.WithResponseErrorMsgHandler(lang.Handler()),
 	)
 
-	err := ctx.Request.ParseMultipartForm(10 << 20)
-	if err != nil {
-		rru.WithError(errors.New("分块文件太大"))
+	if err := ctx.Request.ParseMultipartForm(10 << 20); err != nil {
+		rru.WithError(xerror.New("分块文件太大"))
 		return
 	}
 
@@ -88,7 +86,20 @@ func (c *Controller) UploadPublicChunk(ctx *gin.Context) {
 		ChunkNumber: valutil.Int(ctx.GetHeader("uploader-chunk-number")),
 	}
 
-	res, err := new(service).UploadPublicChunk(ctx, &in)
+	svc := new(service)
+
+	tempPath, err := svc.PrepareChunk(ctx.Request.Context(), &in)
+	if nil != err {
+		rru.WithError(err)
+		return
+	}
+
+	if err := ctx.SaveUploadedFile(in.File, tempPath); nil != err {
+		rru.WithError(xerror.WrapWithXCode(err, ecode.ErrorFileSave))
+		return
+	}
+
+	res, err := svc.FinalizeChunk(ctx.Request.Context(), &in)
 	if nil != err {
 		rru.WithError(err)
 		return

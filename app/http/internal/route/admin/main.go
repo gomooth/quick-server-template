@@ -26,4 +26,5 @@ func Register(router *gin.Engine) {
 	)
 
 	registerUser(ra)
+	registerFile(ra)
 }
