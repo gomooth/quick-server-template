@@ -29,7 +29,7 @@ func (c *Controller) Liveness(ctx *gin.Context) {
 func (c *Controller) Readiness(ctx *gin.Context) {
 	res := new(healthsvc.Service).Readiness(ctx.Request.Context())
 
-	if res.Status == healthsvc.HealthFail {
+	if res.Status == healthsvc.Fail {
 		ctx.JSON(http.StatusServiceUnavailable, res)
 		return
 	}

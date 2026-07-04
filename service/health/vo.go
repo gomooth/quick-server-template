@@ -9,12 +9,12 @@ const (
 	StatusSkip CheckStatus = "skip"
 )
 
-// HealthStatus 整体健康状态
-type HealthStatus string
+// Status 整体健康状态
+type Status string
 
 const (
-	HealthOK   HealthStatus = "ok"
-	HealthFail HealthStatus = "fail"
+	OK   Status = "ok"
+	Fail Status = "fail"
 )
 
 // PongResponse /ping 端点响应（兼容旧客户端）
@@ -24,14 +24,14 @@ type PongResponse struct {
 
 // LivenessResponse /healthz 端点响应
 type LivenessResponse struct {
-	Status HealthStatus `json:"status"`
-	Build  BuildInfo    `json:"build"`
+	Status Status    `json:"status"`
+	Build  BuildInfo `json:"build"`
 }
 
 // ReadinessResponse /readyz 端点响应
 type ReadinessResponse struct {
-	Status HealthStatus           `json:"status"`
-	Checks map[string]CheckResult `json:"checks"`
+	Status Status         `json:"status"`
+	Checks map[string]any `json:"checks"`
 }
 
 // BuildInfo 构建信息
@@ -44,8 +44,15 @@ type BuildInfo struct {
 // CheckResult 单项检查结果
 type CheckResult struct {
 	Status CheckStatus `json:"status"`
-	Detail string     `json:"detail,omitempty"`
+	Detail string      `json:"detail,omitempty"`
 	// system 专用字段
 	Goroutines int     `json:"goroutines,omitempty"`
 	MemoryMB   float64 `json:"memory_mb,omitempty"`
+}
+
+// GroupCheckResult 分组检查结果（如多个数据库的聚合）
+type GroupCheckResult struct {
+	Status CheckStatus            `json:"status"`
+	Detail string                 `json:"detail,omitempty"`
+	Items  map[string]CheckResult `json:"items,omitempty"`
 }

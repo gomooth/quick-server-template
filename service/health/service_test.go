@@ -56,7 +56,7 @@ func TestCheckSystem_ReportsRuntimeMetrics(t *testing.T) {
 	assert.Greater(t, result.MemoryMB, float64(0))
 }
 
-func TestCheckDB_Disabled(t *testing.T) {
+func TestCheckAllDBs_Disabled(t *testing.T) {
 	err := testhelper.SetupTest()
 	assert.Nil(t, err)
 	orig := global.Config.Data.Persistent.Enabled
@@ -65,9 +65,33 @@ func TestCheckDB_Disabled(t *testing.T) {
 	global.Config.Data.Persistent.Enabled = false
 
 	svc := Service{}
-	result := svc.checkDB(context.Background())
+	result := svc.checkAllDBs(context.Background())
 	assert.Equal(t, StatusSkip, result.Status)
 	assert.Equal(t, "disabled", result.Detail)
+}
+
+func TestCheckAllDBs_NoConnections(t *testing.T) {
+	err := testhelper.SetupTest()
+	assert.Nil(t, err)
+	orig := global.Config.Data.Persistent.Enabled
+	defer func() { global.Config.Data.Persistent.Enabled = orig }()
+
+	global.Config.Data.Persistent.Enabled = true
+
+	svc := Service{}
+	result := svc.checkAllDBs(context.Background())
+	assert.Equal(t, StatusSkip, result.Status)
+	assert.Equal(t, "no connections registered", result.Detail)
+}
+
+func TestCheckSingleDB_GetError(t *testing.T) {
+	err := testhelper.SetupTest()
+	assert.Nil(t, err)
+
+	svc := Service{}
+	result := svc.checkSingleDB(context.Background(), "nonexistent_db")
+	assert.Equal(t, StatusFail, result.Status)
+	assert.Contains(t, result.Detail, "not registered")
 }
 
 func TestCheckRedis_Disabled(t *testing.T) {
@@ -98,7 +122,7 @@ func TestLiveness(t *testing.T) {
 
 	svc := Service{}
 	resp := svc.Liveness()
-	assert.Equal(t, HealthOK, resp.Status)
+	assert.Equal(t, OK, resp.Status)
 	assert.Equal(t, "v1.0", resp.Build.Version)
 }
 
@@ -117,37 +141,52 @@ func TestReadiness_DBDisabled(t *testing.T) {
 
 	svc := Service{}
 	resp := svc.Readiness(context.Background())
-	assert.Equal(t, HealthOK, resp.Status) // system always ok
-	assert.Equal(t, StatusSkip, resp.Checks["database"].Status)
-	assert.Equal(t, StatusSkip, resp.Checks["redis"].Status)
-	assert.Equal(t, StatusOK, resp.Checks["system"].Status)
+	assert.Equal(t, OK, resp.Status) // system always ok
+	dbCheck := resp.Checks["database"].(GroupCheckResult)
+	assert.Equal(t, StatusSkip, dbCheck.Status)
+	redisCheck := resp.Checks["redis"].(CheckResult)
+	assert.Equal(t, StatusSkip, redisCheck.Status)
+	sysCheck := resp.Checks["system"].(CheckResult)
+	assert.Equal(t, StatusOK, sysCheck.Status)
 }
 
 func TestDetermineOverallStatus_AllOK(t *testing.T) {
-	checks := map[string]CheckResult{
-		"database": {Status: StatusOK},
-		"redis":    {Status: StatusOK},
-		"system":   {Status: StatusOK},
+	checks := map[string]any{
+		"database": GroupCheckResult{Status: StatusOK, Items: map[string]CheckResult{"platform": {Status: StatusOK}}},
+		"redis":    CheckResult{Status: StatusOK},
+		"system":   CheckResult{Status: StatusOK},
 	}
-	assert.Equal(t, HealthOK, determineOverallStatus(checks))
+	assert.Equal(t, OK, determineOverallStatus(checks))
 }
 
 func TestDetermineOverallStatus_WithFail(t *testing.T) {
-	checks := map[string]CheckResult{
-		"database": {Status: StatusFail, Detail: "connection refused"},
-		"redis":    {Status: StatusSkip, Detail: "disabled"},
-		"system":   {Status: StatusOK},
+	checks := map[string]any{
+		"database": GroupCheckResult{Status: StatusOK, Items: map[string]CheckResult{"platform": {Status: StatusOK}}},
+		"redis":    CheckResult{Status: StatusFail, Detail: "connection refused"},
+		"system":   CheckResult{Status: StatusOK},
 	}
-	assert.Equal(t, HealthFail, determineOverallStatus(checks))
+	assert.Equal(t, Fail, determineOverallStatus(checks))
+}
+
+func TestDetermineOverallStatus_WithGroupFail(t *testing.T) {
+	checks := map[string]any{
+		"database": GroupCheckResult{Status: StatusFail, Items: map[string]CheckResult{
+			"platform":      {Status: StatusOK},
+			"localPlatform": {Status: StatusFail, Detail: "connection refused"},
+		}},
+		"redis":  CheckResult{Status: StatusOK},
+		"system": CheckResult{Status: StatusOK},
+	}
+	assert.Equal(t, Fail, determineOverallStatus(checks))
 }
 
 func TestDetermineOverallStatus_AllSkip(t *testing.T) {
-	checks := map[string]CheckResult{
-		"database": {Status: StatusSkip, Detail: "disabled"},
-		"redis":    {Status: StatusSkip, Detail: "disabled"},
-		"system":   {Status: StatusOK},
+	checks := map[string]any{
+		"database": GroupCheckResult{Status: StatusSkip, Detail: "disabled"},
+		"redis":    CheckResult{Status: StatusSkip, Detail: "disabled"},
+		"system":   CheckResult{Status: StatusOK},
 	}
-	assert.Equal(t, HealthOK, determineOverallStatus(checks))
+	assert.Equal(t, OK, determineOverallStatus(checks))
 }
 
 func TestPing(t *testing.T) {

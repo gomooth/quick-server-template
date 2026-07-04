@@ -13,15 +13,15 @@ type Service struct{}
 // Liveness 返回存活状态和构建信息
 func (s *Service) Liveness() LivenessResponse {
 	return LivenessResponse{
-		Status: HealthOK,
+		Status: OK,
 		Build:  s.getBuildInfo(),
 	}
 }
 
 // Readiness 检查所有依赖并返回就绪状态
 func (s *Service) Readiness(ctx context.Context) ReadinessResponse {
-	checks := map[string]CheckResult{
-		"database": s.checkDB(ctx),
+	checks := map[string]any{
+		"database": s.checkAllDBs(ctx),
 		"redis":    s.checkRedis(ctx),
 		"system":   s.checkSystem(),
 	}
@@ -38,22 +38,50 @@ func (s *Service) Ping() PongResponse {
 }
 
 // determineOverallStatus 根据各项检查结果确定整体健康状态
-func determineOverallStatus(checks map[string]CheckResult) HealthStatus {
+// checks 中的值应为 CheckResult 或 GroupCheckResult，未知类型将被忽略
+func determineOverallStatus(checks map[string]any) Status {
 	for _, c := range checks {
-		if c.Status == StatusFail {
-			return HealthFail
+		switch v := c.(type) {
+		case CheckResult:
+			if v.Status == StatusFail {
+				return Fail
+			}
+		case GroupCheckResult:
+			if v.Status == StatusFail {
+				return Fail
+			}
 		}
 	}
-	return HealthOK
+	return OK
 }
 
-// checkDB 检查数据库连接
-func (s *Service) checkDB(ctx context.Context) CheckResult {
+// checkAllDBs 检查所有已注册数据库连接
+func (s *Service) checkAllDBs(ctx context.Context) GroupCheckResult {
 	if !global.Config.Data.Persistent.Enabled {
-		return CheckResult{Status: StatusSkip, Detail: "disabled"}
+		return GroupCheckResult{Status: StatusSkip, Detail: "disabled"}
 	}
 
-	db, err := global.Database().Get("platform")
+	names := global.Database().List()
+	if len(names) == 0 {
+		return GroupCheckResult{Status: StatusSkip, Detail: "no connections registered"}
+	}
+
+	items := make(map[string]CheckResult, len(names))
+	groupStatus := StatusOK
+
+	for _, name := range names {
+		items[name] = s.checkSingleDB(ctx, name)
+		if items[name].Status == StatusFail {
+			groupStatus = StatusFail
+		}
+	}
+
+	return GroupCheckResult{Status: groupStatus, Items: items}
+}
+
+// checkSingleDB 检查单个数据库连接
+func (s *Service) checkSingleDB(ctx context.Context, name string) CheckResult {
+	db, err := global.Database().Get(name)
 	if err != nil {
 		return CheckResult{Status: StatusFail, Detail: err.Error()}
 	}

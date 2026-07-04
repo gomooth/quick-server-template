@@ -14,6 +14,8 @@ var dbs = make(map[string]*gorm.DB)
 type databases struct {
 }
 
+var _ dbmanager.IDatabaseManager = (*databases)(nil)
+
 func Database() dbmanager.IDatabaseManager {
 	return &databases{}
 }
@@ -46,6 +48,15 @@ func (db databases) Unregister(name string) error {
 	}
 	delete(dbs, name)
 	return nil
+}
+
+// List 返回所有已注册的数据库连接名
+func (db databases) List() []string {
+	names := make([]string, 0, len(dbs))
+	for name := range dbs {
+		names = append(names, name)
+	}
+	return names
 }
 
 func (db databases) CloseAll() error {

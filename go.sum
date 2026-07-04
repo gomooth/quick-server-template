@@ -80,8 +80,8 @@ github.com/gomooth/httpsqs v0.2.0 h1:Q564rGEWafeSdCS2LH3/07X0zE/XKJlPW3W71vGK1XU
 github.com/gomooth/httpsqs v0.2.0/go.mod h1:XOF8P8fdEHdgjJGO4rD0pEB7ZZI1wVRteapewDDXF4k=
 github.com/gomooth/locker v0.2.0 h1:dGRd68ybdBfX6wFQ2gDrmwqrHEl9TbsdOJmNkm1/s6Q=
 github.com/gomooth/locker v0.2.0/go.mod h1:uJhFtEKKCwbcGyH2mXpwo8tQHI/ihu54z0Ojf2MTTaI=
-github.com/gomooth/pkg v0.2.0 h1:oFP7hRjwza+oE7LFjo8em/ABiVEJhJfh9T0r27khdPQ=
-github.com/gomooth/pkg v0.2.0/go.mod h1:NJec1iA9CW/2QkpYISMfTDMNAlLI6G+fxHO9Igt0jAc=
+github.com/gomooth/pkg v0.2.1 h1:Xh+7UaNca9h7PTIUwgvGO8GNNtT1hcbJ9nvRtAY7epk=
+github.com/gomooth/pkg v0.2.1/go.mod h1:NJec1iA9CW/2QkpYISMfTDMNAlLI6G+fxHO9Igt0jAc=
 github.com/gomooth/utils v0.2.0 h1:Lw9p3TtkKLqpU9UWaPUMVsujI08WUGEbyy3qHHELLks=
 github.com/gomooth/utils v0.2.0/go.mod h1:WK8dGaGQ+dLJKSqF6cAHlDacEmoG5YFH9CLNf+40+Kg=
 github.com/gomooth/xerror v0.1.0 h1:b7+Cdo7+ebfQJJWfoGvJlduCVcvFXjtk00inV5ncbqs=

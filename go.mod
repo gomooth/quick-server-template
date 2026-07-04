@@ -4,7 +4,6 @@ go 1.25.0
 
 //replace github.com/gomooth/pkg => /Users/royee/Develop/PoeticalSoft/github.com/gomooth/pkg
 
-
 require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/eko/gocache/lib/v4 v4.2.3
@@ -14,7 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/gomooth/httpsqs v0.2.0
 	github.com/gomooth/locker v0.2.0
-	github.com/gomooth/pkg v0.2.0
+	github.com/gomooth/pkg v0.2.1
 	github.com/gomooth/utils v0.2.0
 	github.com/gomooth/xerror v0.1.0
 	github.com/pkg/errors v0.9.1
