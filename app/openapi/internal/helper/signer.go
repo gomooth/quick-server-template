@@ -1,10 +1,15 @@
 package helper
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha1"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type SignResult struct {
@@ -70,4 +75,37 @@ func Sign(appID, appSecret, ts string, path string, qs map[string]string, body s
 	result.Signature = fmt.Sprintf("%x", sha1.Sum([]byte(result.SignedText)))
 
 	return result
+}
+
+// GetRequestPath 从上下文中提取请求路径
+func GetRequestPath(ctx context.Context) string {
+	gtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return ""
+	}
+	return gtx.Request.URL.Path
+}
+
+// ExtractRequestParams 从上下文中提取 query 参数和 body，并回写 body 供下游读取
+func ExtractRequestParams(ctx context.Context) (qs map[string]string, body string) {
+	gtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return nil, ""
+	}
+
+	// 提取 query 参数
+	qs = make(map[string]string)
+	for key := range gtx.Request.URL.Query() {
+		v := gtx.Request.URL.Query().Get(key)
+		if len(v) > 0 {
+			qs[key] = v
+		}
+	}
+
+	// 读取 body 并回写
+	bodyRaw, _ := io.ReadAll(gtx.Request.Body)
+	gtx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyRaw))
+	body = strings.TrimSpace(string(bodyRaw))
+
+	return qs, body
 }

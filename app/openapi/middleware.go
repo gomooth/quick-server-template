@@ -12,6 +12,10 @@ func Middleware() *customMiddleware {
 	return &customMiddleware{}
 }
 
+func (m *customMiddleware) SignDebug() gin.HandlerFunc {
+	return middleware.SignDebug()
+}
+
 func (m *customMiddleware) RequestCache() gin.HandlerFunc {
 	return middleware.Cache()
 }

@@ -1,17 +1,13 @@
 package middleware
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"log/slog"
 	"math"
-	"server-api/global"
 	"server-api/app/openapi/internal/helper"
 	"server-api/app/openapi/internal/helper/ecode"
+	"server-api/global"
 	"server-api/repository/platform/pattr"
 	"server-api/repository/platform/pcache"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,11 +26,6 @@ func Auth() gin.HandlerFunc {
 func AuthWithoutSign() gin.HandlerFunc {
 	return auth(true)
 }
-
-var (
-	signDebuggerAppID     = "sign-debugger"
-	signDebuggerAppSecret = "sign-debugger-secret"
-)
 
 func auth(withoutSign bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -57,15 +48,6 @@ func auth(withoutSign bool) gin.HandlerFunc {
 				rru.WithError(xerror.NewXCode(ecode.RequestExpired))
 				return
 			}
-		}
-
-		// 开启签名调试，直接返回校验结果，不返回数据
-		if h.AppID == signDebuggerAppID {
-			sign := signDebugger(c, h.Timestamp)
-			bs, _ := json.Marshal(sign)
-			rru.WithBody(string(bs))
-			c.Abort()
-			return
 		}
 
 		// 获取应用
@@ -92,24 +74,9 @@ func auth(withoutSign bool) gin.HandlerFunc {
 			return
 		}
 
-		path := c.Request.URL.Path
-
-		// 获得请求参数
-		qs := make(map[string]string)
-		for key := range c.Request.URL.Query() {
-			v := c.Request.URL.Query().Get(key)
-			if len(v) > 0 {
-				qs[key] = v
-			}
-		}
-
-		bodyRaw, _ := io.ReadAll(c.Request.Body)
-		body := strings.TrimSpace(string(bodyRaw)) // 去掉换行
-
-		// 重新写入 request body
-		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyRaw))
-
 		// 检查签名
+		qs, body := helper.ExtractRequestParams(c)
+		path := c.Request.URL.Path
 		sign := helper.Sign(h.AppID, app.AppSecret, h.Timestamp, path, qs, body)
 		if h.Sign != sign.Signature {
 			if !global.Env().IsProd() {
@@ -118,24 +85,7 @@ func auth(withoutSign bool) gin.HandlerFunc {
 			rru.WithError(xerror.NewXCode(ecode.SignError))
 			return
 		}
+
+		c.Next()
 	}
-}
-
-func signDebugger(c *gin.Context, ts string) *helper.SignResult {
-	path := c.Request.URL.Path
-
-	// 获得请求参数
-	qs := make(map[string]string)
-	for key := range c.Request.URL.Query() {
-		v := c.Request.URL.Query().Get(key)
-		if len(v) > 0 {
-			qs[key] = v
-		}
-	}
-
-	bodyRaw, _ := io.ReadAll(c.Request.Body)
-	body := strings.TrimSpace(string(bodyRaw)) // 去掉换行
-
-	// 检查签名
-	return helper.Sign(signDebuggerAppID, signDebuggerAppSecret, ts, path, qs, body)
 }

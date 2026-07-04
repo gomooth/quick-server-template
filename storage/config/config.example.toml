@@ -25,6 +25,12 @@
     addr = "0.0.0.0:8001"
     # 服务域名
     host = ""
+    # 签名调试开关（仅非生产环境使用，开启后匹配 debug_app_id 的请求将返回签名计算结果，不返回业务数据）
+    sign_debug_enabled = false
+    # 调试用 AppID，仅在 sign_debug_enabled=true 时生效
+    sign_debug_app_id = "sign-debugger"
+    # 调试用 AppSecret，仅在 sign_debug_enabled=true 时生效
+    sign_debug_secret = "sign-debugger-secret"
         # OpenAPI HTTP 缓存
         [server.openapi.cache]
         enabled = false

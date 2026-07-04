@@ -1,14 +1,13 @@
 package middleware
 
 import (
+	"fmt"
 	"server-api/global"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/ulule/limiter/v3"
 	"github.com/ulule/limiter/v3/drivers/store/redis"
-
-	libredis "github.com/redis/go-redis/v9"
 
 	"github.com/gomooth/pkg/http/middleware"
 )
@@ -18,14 +17,16 @@ const (
 )
 
 func IPRateLimit() gin.HandlerFunc {
-	client := libredis.NewClient(&libredis.Options{
-		Addr:     global.Config.Server.OpenAPI.Cache.Addr,
-		Password: global.Config.Server.OpenAPI.Cache.Password,
-		DB:       global.Config.Server.OpenAPI.Cache.DB,
-	})
+	client, err := global.RedisClient()
+	if err != nil {
+		panic(fmt.Sprintf("openapi rate limiter: %v", err))
+	}
 	store, err := redis.NewStoreWithOptions(client, limiter.StoreOptions{
 		Prefix: "openapi:limiter:byIp",
 	})
+	if err != nil {
+		panic(fmt.Sprintf("openapi rate limiter store: %v", err))
+	}
 
 	rate, err := limiter.NewRateFromFormatted(ipLimit)
 	if err != nil {
