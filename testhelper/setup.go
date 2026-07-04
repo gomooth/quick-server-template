@@ -1,11 +1,13 @@
 package testhelper
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"server-api/global"
 )
@@ -178,7 +180,14 @@ func findConfigFile() (string, error) {
 // Cleanup 在测试后执行清理操作
 // 应该在TestMain中的m.Run()之后调用
 func Cleanup() {
-	// 当前不需要清理，但保留给将来使用
+	// 释放已注册的全局基础设施资源（Redis/Cache/DB/Producer 等），LIFO 顺序。
+	// 测试环境记录错误但不影响清理流程。
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := global.Release(ctx); err != nil {
+		// 测试环境记录但不影响清理流程
+		_ = err
+	}
 	log.Println("test cleanup completed")
 }
 

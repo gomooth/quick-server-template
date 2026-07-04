@@ -12,15 +12,16 @@ import (
 	"github.com/gomooth/xerror"
 )
 
-func RedisLocker(opt *redis.Options) (locker.ILocker, error) {
+func RedisLocker(opt *redis.Options) (locker.ILocker, *redis.Client, error) {
 	if len(opt.Addr) == 0 || !strings.Contains(opt.Addr, ":") {
-		return nil, xerror.New("locker redis config not exist")
+		return nil, nil, xerror.New("locker redis config not exist")
 	}
 
 	client := redis.NewClient(opt)
 	if err := client.Ping(context.Background()).Err(); nil != err {
-		return nil, xerror.Wrap(err, "redis client connect failed")
+		_ = client.Close()
+		return nil, nil, xerror.Wrap(err, "redis client connect failed")
 	}
 
-	return redislock.New(client), nil
+	return redislock.New(client), client, nil
 }

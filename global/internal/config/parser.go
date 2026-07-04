@@ -18,7 +18,32 @@ func ParseConfig(content []byte) (*ProjectConfig, error) {
 		return nil, err
 	}
 
+	if err := cfg.validate(); nil != err {
+		return nil, err
+	}
+
 	return &cfg, nil
+}
+
+// validate 校验配置项的合法性与唯一性约束。
+func (cnf *ProjectConfig) validate() error {
+	// 持久存储未启用时跳过连接校验
+	if !cnf.Data.Persistent.Enabled {
+		return nil
+	}
+
+	// 数据库连接名唯一且非空
+	seen := make(map[string]bool)
+	for _, conn := range cnf.Data.Persistent.Connects {
+		if conn.Name == "" {
+			return xerror.New("database connect name is empty")
+		}
+		if seen[conn.Name] {
+			return xerror.Errorf("database connect name duplicated: %s", conn.Name)
+		}
+		seen[conn.Name] = true
+	}
+	return nil
 }
 
 const exampleConfigFilename = "config.example.toml" // APP 配置样例文件

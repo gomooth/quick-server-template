@@ -3,13 +3,14 @@ package boot
 import (
 	"context"
 	"log/slog"
-	"server-api/global"
 	"server-api/boot/internal/consumer"
 	"server-api/boot/internal/cronjob"
 	"server-api/boot/internal/http"
 	"server-api/boot/internal/openapi"
 	"server-api/boot/internal/watcher"
+	"server-api/global"
 	"server-api/service/lang"
+	"time"
 
 	"github.com/gomooth/pkg/framework/app"
 
@@ -50,6 +51,12 @@ func Boot(cnf Param) error {
 	if err := global.MigrateData(); err != nil {
 		return errors.Wrap(err, "init db connect failed")
 	}
+
+	// 初始化超级管理员
+	if err := seedAdminUser(global.Config.App.Admin.Account, global.Config.App.Admin.Password); err != nil {
+		return errors.Wrap(err, "seed admin user failed")
+	}
+
 	// 初始化语言包
 	if err := lang.Init(ctx); nil != err {
 		return xerror.Wrap(err, "lang init failed")
@@ -87,7 +94,14 @@ func Boot(cnf Param) error {
 		}
 	}
 
-	apps.Run(ctx)
+	// 阻塞直至收到中断信号或启动失败返回；返回值含启动/关闭过程中的错误
+	runErr := apps.Run(ctx)
 
-	return nil
+	// 无论 Run 成败，都释放已注册的基础设施资源（Redis/Cache/DB/Producer 等），LIFO 顺序
+	releaseCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := global.Release(releaseCtx); err != nil {
+		slog.Error("global release failed", "err", err)
+	}
+	return runErr
 }

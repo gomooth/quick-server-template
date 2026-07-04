@@ -9,16 +9,19 @@ import (
 	"github.com/gomooth/pkg/mq/kafka"
 )
 
+// 保留 sync.Once 保证 producer 单例；保留 shutdownOnce 保证 Shutdown 幂等。
+// 不注册 global.RegisterRelease——producer 是 consumer app 的私有资源，
+// 由 consumer app 的 Release/Shutdown 调用 ShutdownProducer 释放。
 var (
-	once     sync.Once
-	producer mq.IProducer
+	once         sync.Once
+	shutdownOnce sync.Once
+	producer     mq.IProducer
 )
 
 func GetProducer() mq.IProducer {
 	if producer != nil {
 		return producer
 	}
-
 	once.Do(func() {
 		producer = kafka.NewProducer(
 			global.Config.Producer.Kafka.Addrs,
@@ -35,8 +38,11 @@ func StartProducer(ctx context.Context) error {
 
 // ShutdownProducer 关闭生产者（应在 app 关闭时调用）
 func ShutdownProducer(ctx context.Context) error {
-	if producer != nil {
-		return producer.Shutdown(ctx)
-	}
-	return nil
+	var err error
+	shutdownOnce.Do(func() {
+		if producer != nil {
+			err = producer.Shutdown(ctx)
+		}
+	})
+	return err
 }

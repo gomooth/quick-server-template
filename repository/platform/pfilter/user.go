@@ -6,5 +6,6 @@ type User struct {
 }
 
 type UserLoginLog struct {
-	UserID uint
+	UserID  uint
+	UserIDs []uint
 }

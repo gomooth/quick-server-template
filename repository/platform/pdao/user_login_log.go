@@ -51,7 +51,11 @@ func (u *userLoginLog) buildFilter(filter *pfilter.UserLoginLog, db *gorm.DB) *g
 	}
 
 	if v := filter.UserID; v > 0 {
-		db = db.Where("user_id in (?)", v)
+		db = db.Where("user_id = ?", v)
+	}
+
+	if len(filter.UserIDs) > 0 {
+		db = db.Where("user_id IN (?)", filter.UserIDs)
 	}
 
 	return db

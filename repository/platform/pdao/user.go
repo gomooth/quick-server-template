@@ -2,6 +2,7 @@ package pdao
 
 import (
 	"context"
+	"errors"
 	"server-api/global"
 	"server-api/repository/platform/pattr"
 	"server-api/repository/platform/pmodel"
@@ -103,20 +104,32 @@ func (u *user) CreateAndBindThirdUser(ctx context.Context, genres []int8, record
 	}
 
 	return u.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 如果存在则更新
-		if err := tx.Where("account = ?", record.Account).
-			Assign(map[string]interface{}{
-				"nickname":   record.Nickname,
-				"password":   record.Password,
-				"deleted_at": nil, // 清空删除状态
-			}).
-			FirstOrCreate(record).Error; err != nil {
+		// 查找已有记录（含软删除）：若 account 曾被软删除则恢复，否则新建
+		var existing pmodel.User
+		err := tx.Unscoped().Where("account = ?", record.Account).First(&existing).Error
+		if err == nil {
+			record.ID = existing.ID
+			record.CreatedAt = existing.CreatedAt
+			if err := tx.Unscoped().Model(&pmodel.User{}).
+				Where("id = ?", existing.ID).
+				Updates(map[string]interface{}{
+					"nickname":   record.Nickname,
+					"password":   record.Password,
+					"deleted_at": nil, // 清空删除状态
+				}).Error; err != nil {
+				return xerror.WrapWithXCode(err, xcode.DBFailed)
+			}
+		} else if errors.Is(err, gorm.ErrRecordNotFound) {
+			if err := tx.Create(record).Error; err != nil {
+				return xerror.WrapWithXCode(err, xcode.DBFailed)
+			}
+		} else {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 
 		// 写统计
 		stat.UserID = record.ID
-		if err := tx.FirstOrCreate(stat).Error; err != nil {
+		if err := tx.Where("user_id = ?", record.ID).FirstOrCreate(stat).Error; err != nil {
 			return xerror.WrapWithXCode(err, xcode.DBFailed)
 		}
 

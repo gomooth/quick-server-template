@@ -2,6 +2,9 @@ package global
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"server-api/global/internal/database"
 	inlocker "server-api/global/internal/locker"
 	"strings"
@@ -19,7 +22,6 @@ import (
 
 	"github.com/gomooth/xerror"
 )
-
 
 var (
 	_redisClient  *redis.Client
@@ -85,6 +87,16 @@ func initDB() error {
 	}
 
 	for _, db := range Config.Data.Persistent.Connects {
+		// sqlite 驱动需先确保 dsn 目录存在
+		if isSQLiteDriver(db.Driver) {
+			dir := filepath.Dir(db.Dsn)
+			if dir != "." && dir != "" {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					return xerror.Wrap(err, "create sqlite dir failed")
+				}
+			}
+		}
+
 		c, err := dbutil.Connect(&dbutil.Option{
 			Name: db.Name,
 			Config: &dbutil.ConnectConfig{
@@ -105,6 +117,10 @@ func initDB() error {
 			return err
 		}
 	}
+
+	RegisterRelease(func(ctx context.Context) error {
+		return Database().CloseAll()
+	})
 
 	return nil
 }
@@ -133,6 +149,21 @@ func initRedis() error {
 		return xerror.Wrap(err, "redis client connect failed")
 	}
 
+	RegisterRelease(func(ctx context.Context) error {
+		var errs []error
+		if _redisClient != nil {
+			if err := _redisClient.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if SessionStoreClient != nil {
+			if err := SessionStoreClient.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		return errors.Join(errs...)
+	})
+
 	Log.Debug("redis enabled, init success")
 
 	return nil
@@ -146,6 +177,7 @@ func initCache() error {
 
 	// 获得不同驱动的存储
 	var stored store.StoreInterface
+	var cacheClient *redis.Client
 	switch Config.Data.Cache.Engine {
 	case "redis":
 		cnf := Config.Data.Cache.Redis
@@ -153,12 +185,17 @@ func initCache() error {
 			return xerror.New("cache redis config not exist")
 		}
 
+		cacheClient = redis.NewClient(&redis.Options{
+			Addr:     cnf.Addr,
+			Password: cnf.Password,
+			DB:       cnf.DB,
+		})
+		if err := cacheClient.Ping(context.Background()).Err(); nil != err {
+			return xerror.Wrap(err, "cache redis connect failed")
+		}
+
 		stored = redisstore.NewRedis(
-			redis.NewClient(&redis.Options{
-				Addr:     cnf.Addr,
-				Password: cnf.Password,
-				DB:       cnf.DB,
-			}),
+			cacheClient,
 			store.WithExpiration(15*time.Minute), // 默认缓存15分钟，防止缓存默认永存
 		)
 	default:
@@ -175,6 +212,12 @@ func initCache() error {
 	}
 
 	_cacheManager = cacheManager
+	RegisterRelease(func(ctx context.Context) error {
+		if cacheClient != nil {
+			return cacheClient.Close()
+		}
+		return nil
+	})
 	Log.Debug("cache manger init ... success")
 	return nil
 }
@@ -186,13 +229,14 @@ func initLocker() error {
 	}
 
 	var (
-		err  error
-		lock locker.ILocker
+		err    error
+		lock   locker.ILocker
+		client *redis.Client
 	)
 	switch Config.Data.Locker.Engine {
 	case "redis":
 		cnf := Config.Data.Locker.Redis
-		lock, err = inlocker.RedisLocker(&redis.Options{
+		lock, client, err = inlocker.RedisLocker(&redis.Options{
 			Addr:     cnf.Addr,
 			Password: cnf.Password,
 			DB:       cnf.DB,
@@ -205,6 +249,23 @@ func initLocker() error {
 	}
 
 	_locker = lock
+	RegisterRelease(func(ctx context.Context) error {
+		var errs []error
+		if lock != nil {
+			if err := lock.Close(); err != nil {
+				errs = append(errs, err)
+			}
+			if err := lock.Wait(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if client != nil {
+			if err := client.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		return errors.Join(errs...)
+	})
 	Log.Debug("locker enabled, init success")
 
 	return nil
@@ -225,9 +286,14 @@ func migrateData() error {
 		return nil
 	}
 
-	if err := database.Migrate(Database(), Config); nil != err {
+	if err := database.Migrate(Database()); nil != err {
 		return err
 	}
 
 	return nil
+}
+
+func isSQLiteDriver(driver string) bool {
+	d := strings.ToLower(strings.TrimSpace(driver))
+	return d == "sqlite" || d == "sqlite3"
 }

@@ -1,9 +1,12 @@
 package consumer
 
 import (
+	"context"
+
+	"server-api/app/consumer/internal/consumer/example"
+	internalhelper "server-api/app/consumer/internal/helper"
 	"server-api/global/kafka/cg"
 	"server-api/global/kafka/topic"
-	"server-api/app/consumer/internal/consumer/example"
 
 	"github.com/gomooth/pkg/mq"
 )
@@ -20,6 +23,6 @@ func KafkaRegister(s mq.IConsumeServer) error {
 
 // KafkaRelease 释放资源
 func KafkaRelease() error {
-
-	return nil
+	// producer 是 consumer app 的私有资源，由 app 的 Release 调用 ShutdownProducer 释放
+	return internalhelper.ShutdownProducer(context.Background())
 }

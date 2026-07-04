@@ -39,22 +39,6 @@
         db      = 4
 
 
-# 消息消费者
-[consumer]
-    [consumer.kafka]
-    addrs   = ["127.0.0.1:9092"]
-
-    [consumer.redis]
-    addr    = "127.0.0.1:6379"
-    auth    = ""
-    db      = 3
-
-    [consumer.httpsqs]
-    addr    = "127.0.0.1:1218"
-    auth    = ""
-    timeout = 10
-
-
 [app]
 # 服务标识
 id = "server-api"
@@ -98,36 +82,39 @@ secret = "go-quick-server-template"
     enabled = true
     # 是否自动迁移基础表
     auto_migrate = true
+        # 默认使用 SQLite，开箱即用，无需外部依赖
         [[data.persistent.connects]]
         name        = "platform"
-        type        = "mysql"
-        dsn         = "user:password@tcp(ip:prot)/platform?charset=utf8mb4&parseTime=true&loc=Local"
+        type        = "sqlite"
+        dsn         = "storage/db/platform.db"
         max_idle    = 10
         max_open    = 100
-        log_mode    = true
-        max_life_time = 30
+        log_mode    = false
+        max_life_time = 3600
 
-        [[data.persistent.connects]]
-        name        = "localPlatform"
-        type        = "sqlit"
-        dsn         = "config/main.db?charset=utf8mb4&parseTime=true&loc=Local"
-        max_idle    = 10
-        max_open    = 100
-        log_mode    = true
-        max_life_time = 30
+        # MySQL 示例（按需切换）：
+        # [[data.persistent.connects]]
+        # name        = "platform"
+        # type        = "mysql"
+        # dsn         = "user:password@tcp(127.0.0.1:3306)/platform?charset=utf8mb4&parseTime=true&loc=Local"
+        # max_idle    = 10
+        # max_open    = 100
+        # log_mode    = false
+        # max_life_time = 3600
 
-        [[data.persistent.connects]]
-        name        = "platform"
-        type        = "postgres"
-        dsn         = "host=localhost user=postgres password=postgres dbname=platform port=9920 sslmode=disable TimeZone=Asia/Shanghai"
-        max_idle    = 10
-        max_open    = 100
-        log_mode    = true
-        max_life_time = 30
+        # PostgreSQL 示例：
+        # [[data.persistent.connects]]
+        # name        = "platform"
+        # type        = "postgres"
+        # dsn         = "host=127.0.0.1 user=user password=password dbname=platform port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+        # max_idle    = 10
+        # max_open    = 100
+        # log_mode    = false
+        # max_life_time = 3600
 
     # 内存数据库 Redis
     [data.redis]
-    enabled = true
+    enabled = false
     addr    = "127.0.0.1:6379"
     auth    = ""
     db      = 0
@@ -146,7 +133,7 @@ secret = "go-quick-server-template"
 
     # 缓存
     [data.cache]
-    enabled = true
+    enabled = false
     engine = "redis"
         [data.cache.redis]
         addr    = "127.0.0.1:6379"
@@ -161,6 +148,22 @@ secret = "go-quick-server-template"
         addr    = "127.0.0.1:6379"
         auth    = ""
         db      = 3
+
+
+# 消息消费者
+[consumer]
+    [consumer.kafka]
+    addrs   = ["127.0.0.1:9092"]
+
+    [consumer.redis]
+    addr    = "127.0.0.1:6379"
+    auth    = ""
+    db      = 3
+
+    [consumer.httpsqs]
+    addr    = "127.0.0.1:1218"
+    auth    = ""
+    timeout = 10
 
 
 # 消息生产者
