@@ -30,7 +30,7 @@ func (c Controller) CurrentTime(ctx *gin.Context) {
 func (c Controller) Sign(ctx *gin.Context) {
 	rru := restful.NewResponse(ctx)
 
-	h, err := helper.MustParseHeader(ctx)
+	h, err := helper.ParseHeader(ctx)
 	if err != nil {
 		rru.WithError(err)
 		return

@@ -12,8 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MustParseUser 从上下文中解析授权用户，否则报错
-func MustParseUser(ctx context.Context) (*httpcontext.User, error) {
+// ParseUser 从上下文中解析授权用户
+func ParseUser(ctx context.Context) (*httpcontext.User, error) {
 	htx, err := httpcontext.Parse(ctx)
 	if nil != err {
 		return nil, err
@@ -22,18 +22,19 @@ func MustParseUser(ctx context.Context) (*httpcontext.User, error) {
 	return htx.User(), nil
 }
 
-// ParseUser 从上下文中解析授权用户
-func ParseUser(ctx context.Context) *httpcontext.User {
-	user, err := MustParseUser(ctx)
+// UserFromContext 从上下文中获取授权用户，解析失败返回零值
+func UserFromContext(ctx context.Context) *httpcontext.User {
+	user, err := ParseUser(ctx)
 	if nil != err {
-		slog.Warn("ParseUser: parse failed", "err", err)
+		slog.Warn("UserFromContext: parse failed", "err", err)
 		return &httpcontext.User{}
 	}
 
 	return user
 }
 
-func MustParseAPPHeader(ctx context.Context) (*apptypes.APPHeader, error) {
+// ParseAPPHeader 从上下文中解析 APP Header
+func ParseAPPHeader(ctx context.Context) (*apptypes.APPHeader, error) {
 	gtx, ok := ctx.(*gin.Context)
 	if !ok {
 		return nil, xerror.New("parse gtx failed")
@@ -55,10 +56,11 @@ func MustParseAPPHeader(ctx context.Context) (*apptypes.APPHeader, error) {
 	return &h, nil
 }
 
-func ParseAPPHeader(ctx context.Context) *apptypes.APPHeader {
-	h, err := MustParseAPPHeader(ctx)
+// APPHeaderFromContext 从上下文中获取 APP Header，解析失败返回 nil
+func APPHeaderFromContext(ctx context.Context) *apptypes.APPHeader {
+	h, err := ParseAPPHeader(ctx)
 	if err != nil {
-		slog.Warn("ParseAppHeader: parse failed", "err", err)
+		slog.Warn("APPHeaderFromContext: parse failed", "err", err)
 		return nil
 	}
 

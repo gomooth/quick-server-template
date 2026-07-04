@@ -106,7 +106,7 @@ func (s *service) makeToken(ctx context.Context, user *pmodel.VWUser, opt *login
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorAuthFailed)
 	}
 
-	header := helper.ParseAPPHeader(ctx)
+	header := helper.APPHeaderFromContext(ctx)
 	_ = pdao.NewUserLoginLog().Create(ctx, &pmodel.UserLoginLog{
 		UserID:    user.ID,
 		UserAgent: opt.userAgent,
@@ -134,7 +134,7 @@ func (s *service) makeToken(ctx context.Context, user *pmodel.VWUser, opt *login
 }
 
 func (s *service) Logout(ctx context.Context) error {
-	owner := helper.ParseUser(ctx)
+	owner := helper.UserFromContext(ctx)
 	if owner.GetID() == 0 {
 		return nil
 	}
@@ -147,7 +147,7 @@ func (s *service) Logout(ctx context.Context) error {
 }
 
 func (s *service) ChangePwd(ctx context.Context, in *changePwdRequest) error {
-	owner := helper.ParseUser(ctx)
+	owner := helper.UserFromContext(ctx)
 	if owner.GetID() == 0 {
 		return xerror.NewXCode(xcode.Unauthorized)
 	}

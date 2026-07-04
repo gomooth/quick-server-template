@@ -40,7 +40,7 @@ func auth(withoutSign bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		rru := restful.NewResponse(c)
 
-		h, err := helper.MustParseHeader(c)
+		h, err := helper.ParseHeader(c)
 		if err != nil {
 			rru.WithError(err)
 			return

@@ -38,7 +38,7 @@ func (h *Header) Validate() error {
 	return nil
 }
 
-func MustParseHeader(ctx context.Context) (*Header, error) {
+func ParseHeader(ctx context.Context) (*Header, error) {
 	gtx, ok := ctx.(*gin.Context)
 	if !ok {
 		return nil, xerror.New("parse gtx failed")

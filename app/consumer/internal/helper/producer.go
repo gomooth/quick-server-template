@@ -27,14 +27,14 @@ func GetProducer() mq.IProducer {
 	return producer
 }
 
-// MustStartProducer 启动生产者（应在 app 启动时调用）
-func MustStartProducer(ctx context.Context) error {
+// StartProducer 启动生产者（应在 app 启动时调用）
+func StartProducer(ctx context.Context) error {
 	p := GetProducer()
 	return p.Start(ctx)
 }
 
-// MustShutdownProducer 关闭生产者（应在 app 关闭时调用）
-func MustShutdownProducer(ctx context.Context) error {
+// ShutdownProducer 关闭生产者（应在 app 关闭时调用）
+func ShutdownProducer(ctx context.Context) error {
 	if producer != nil {
 		return producer.Shutdown(ctx)
 	}

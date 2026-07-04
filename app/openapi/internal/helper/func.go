@@ -11,7 +11,7 @@ import (
 
 var OpenAPPIDKey = "__open_app"
 
-func MustParseOpenAPP(ctx context.Context) (*pmodel.OpenAPP, error) {
+func ParseOpenAPP(ctx context.Context) (*pmodel.OpenAPP, error) {
 	gtx, ok := ctx.(*gin.Context)
 	if !ok {
 		return nil, xerror.New("to gtx failed")
