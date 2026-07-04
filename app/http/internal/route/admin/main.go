@@ -10,6 +10,10 @@ import (
 )
 
 func Register(router *gin.Engine) {
+	// 公开路由：admin 登录
+	registerAuth(router)
+
+	// 受保护路由：JWT + RoleSuper
 	ra := router.Group(
 		"/admin",
 		middleware.RESTFul(global.ApiVersionLatest),

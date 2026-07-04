@@ -2,14 +2,13 @@ package auth
 
 import (
 	"context"
+	"time"
+
 	"server-api/global"
 	"server-api/global/ecode"
 	"server-api/app/http/internal/helper"
 	"server-api/repository/platform/pdao"
 	"server-api/repository/platform/pmodel"
-	"time"
-
-	"github.com/gin-gonic/gin"
 
 	"github.com/gomooth/pkg/http/httpcontext"
 	"github.com/gomooth/pkg/http/jwt"
@@ -20,12 +19,32 @@ import (
 	"github.com/gomooth/xerror/xcode"
 )
 
-type service struct {
+type service struct{}
+
+type loginOptions struct {
+	clientIP  string
+	userAgent string
+	referer   string
 }
 
-func (s *service) Login(ctx context.Context, in *createTokenRequest) (*tokenEntity, error) {
-	if err := in.Validate(); nil != err {
-		return nil, xerror.NewXCode(xcode.RequestParamError, err.Error())
+type loginOption func(*loginOptions)
+
+func withClientIP(ip string) loginOption {
+	return func(o *loginOptions) { o.clientIP = ip }
+}
+
+func withUserAgent(ua string) loginOption {
+	return func(o *loginOptions) { o.userAgent = ua }
+}
+
+func withReferer(ref string) loginOption {
+	return func(o *loginOptions) { o.referer = ref }
+}
+
+func (s *service) Login(ctx context.Context, in *createTokenRequest, opts ...loginOption) (*tokenEntity, error) {
+	opt := &loginOptions{}
+	for _, o := range opts {
+		o(opt)
 	}
 
 	user, err := pdao.NewVWUser().FirstByAccount(ctx, in.Account, "UserRoles")
@@ -33,33 +52,31 @@ func (s *service) Login(ctx context.Context, in *createTokenRequest) (*tokenEnti
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorAuthParams)
 	}
 
-	// 账号无效
 	if user.State != 1 {
 		return nil, xerror.NewXCode(ecode.ErrorAuthParams)
 	}
 
-	// 检查密码
+	// 必须是 User 角色
+	if user.CurrentRole() != global.RoleUser {
+		return nil, xerror.NewXCode(ecode.ErrorAuthParams)
+	}
+
 	if !userutil.Check(in.Password, user.Password) {
 		return nil, xerror.NewXCode(ecode.ErrorAuthParams)
 	}
 
-	return s.makeToken(ctx, user)
+	return s.makeToken(ctx, user, opt)
 }
 
-func (s *service) makeToken(ctx context.Context, user *pmodel.VWUser) (*tokenEntity, error) {
-
+func (s *service) makeToken(ctx context.Context, user *pmodel.VWUser, opt *loginOptions) (*tokenEntity, error) {
 	roles, roleTitles, err := user.Roles()
 	if nil != err {
 		return nil, err
 	}
 
-	// token 有效时长
 	duration := 1 * 24 * time.Hour
-	// 多地登陆
-	store := jwtstore.NewMultiRedisStore(global.SessionStoreClient)
-	//// 单一登陆
-	//store := jwtstore.NewSingleRedisStore(global.SessionStoreClient)
-	// 生成JWT TOKEN
+	// 单一登陆
+	store := jwtstore.NewSingleRedisStore(global.SessionStoreClient)
 	tk, err := jwt.NewTokenBuilder(
 		[]byte(global.Config.App.Secret),
 		httpcontext.User{
@@ -81,23 +98,20 @@ func (s *service) makeToken(ctx context.Context, user *pmodel.VWUser) (*tokenEnt
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorAuthFailed)
 	}
 
-	// 更新最后登陆时间
 	now := time.Now()
 	user.LastLoginAt = &now
-	user.LastLoginIP = ctx.(*gin.Context).ClientIP()
+	user.LastLoginIP = opt.clientIP
 	user.UpdatedAt = now
 	if err := pdao.NewUser().Save(ctx, user.ToUser()); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorAuthFailed)
 	}
 
-	// 写登陆日志
-	httpRequest := ctx.(*gin.Context).Request
 	header := helper.ParseAPPHeader(ctx)
 	_ = pdao.NewUserLoginLog().Create(ctx, &pmodel.UserLoginLog{
 		UserID:    user.ID,
-		UserAgent: httpRequest.UserAgent(),
-		IP:        user.LastLoginIP,
-		Referer:   httpRequest.Referer(),
+		UserAgent: opt.userAgent,
+		IP:        opt.clientIP,
+		Referer:   opt.referer,
 
 		UTMSource:   header.UTMSource(),
 		UTMMedium:   header.UTMMedium(),
@@ -125,8 +139,7 @@ func (s *service) Logout(ctx context.Context) error {
 		return nil
 	}
 
-	// 清除 token
-	if err := jwtstore.NewMultiRedisStore(global.SessionStoreClient).Clean(ctx, owner.GetID()); nil != err {
+	if err := jwtstore.NewSingleRedisStore(global.SessionStoreClient).Clean(ctx, owner.GetID()); nil != err {
 		return xerror.WrapWithXCode(err, ecode.ErrorHandleFailed)
 	}
 
@@ -134,10 +147,6 @@ func (s *service) Logout(ctx context.Context) error {
 }
 
 func (s *service) ChangePwd(ctx context.Context, in *changePwdRequest) error {
-	if err := in.Validate(); nil != err {
-		return xerror.NewXCode(xcode.RequestParamError, err.Error())
-	}
-
 	owner := helper.ParseUser(ctx)
 	if owner.GetID() == 0 {
 		return xerror.NewXCode(xcode.Unauthorized)
@@ -154,7 +163,7 @@ func (s *service) ChangePwd(ctx context.Context, in *changePwdRequest) error {
 
 	password, err := userutil.Sum(in.NewPassword)
 	if nil != err {
-		return xerror.WrapWithXCode(err, ecode.ErrorHandleFailed)
+		return xerror.WrapWithXCode(err, ecode.ErrorPasswordFailed)
 	}
 	user.Password = password
 
@@ -162,7 +171,6 @@ func (s *service) ChangePwd(ctx context.Context, in *changePwdRequest) error {
 		return xerror.WrapWithXCode(err, ecode.ErrorHandleFailed)
 	}
 
-	// 注销登陆
 	_ = s.Logout(ctx)
 	return nil
 }

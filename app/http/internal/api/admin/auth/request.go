@@ -1,22 +1,15 @@
 package auth
 
 import (
-	"server-api/global"
-
 	"github.com/gomooth/xerror"
 )
 
 type createTokenRequest struct {
-	Genre    global.Role `json:"genre"`
-	Account  string      `json:"account"`
-	Password string      `json:"password"`
+	Account  string `json:"account"`
+	Password string `json:"password"`
 }
 
-func (in createTokenRequest) Validate() error {
-	if in.Genre != global.RoleSuper && in.Genre != global.RoleUser {
-		return xerror.New("该帐号角色未开通登录权限")
-	}
-
+func (in *createTokenRequest) Validate() error {
 	if len(in.Account) == 0 || len(in.Password) == 0 {
 		return xerror.New("请填写正确的登录信息")
 	}
@@ -33,7 +26,7 @@ type changePwdRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
-func (in changePwdRequest) Validate() error {
+func (in *changePwdRequest) Validate() error {
 	if len(in.OldPassword) == 0 {
 		return xerror.New("原密码 不能为空")
 	}

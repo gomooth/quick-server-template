@@ -16,13 +16,23 @@ import (
 	"github.com/zywaited/xcopy"
 )
 
-type service struct {
+type service struct{}
+
+func genresFromRequest(in []uint8) []int8 {
+	res := make([]int8, 0)
+	for _, genre := range in {
+		if genre == 0 {
+			continue
+		}
+		res = append(res, int8(genre))
+	}
+	return res
 }
 
 func (s *service) Paginate(ctx context.Context, in *paginateRequest) ([]*entity, uint, error) {
 	records, total, err := pdao.NewVWUser().Paginate(ctx, dbquery.NewQuery(
 		pfilter.User{
-			Account: in.Account,
+			AccountLike: in.Account,
 		},
 		dbquery.WithSorts[pfilter.User](in.Sort),
 		dbquery.WithOffsetPage[pfilter.User](in.Start, in.Limit),
@@ -40,10 +50,6 @@ func (s *service) Paginate(ctx context.Context, in *paginateRequest) ([]*entity,
 }
 
 func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error) {
-	if err := in.Validate(); nil != err {
-		return nil, xerror.WrapStatus(err, xcode.RequestParamError)
-	}
-
 	// 判断重复
 	_, err := pdao.NewVWUser().FirstByAccount(ctx, in.Account)
 	if nil == err || !xerror.IsXCode(err, xcode.DBRecordNotFound) {
@@ -52,7 +58,7 @@ func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error
 
 	pwd, err := userutil.Sum(in.Password)
 	if nil != err {
-		return nil, xerror.Wrap(err, "生成密码失败")
+		return nil, xerror.WrapWithXCode(err, ecode.ErrorPasswordFailed)
 	}
 
 	record := pmodel.User{
@@ -63,7 +69,7 @@ func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error
 		State:     1,
 	}
 	stat := pmodel.UserStat{}
-	if err := pdao.NewUser().Create(ctx, in.GetGenres(), &record, &stat); nil != err {
+	if err := pdao.NewUser().Create(ctx, genresFromRequest(in.Genres), &record, &stat); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorSavedData)
 	}
 
@@ -78,9 +84,6 @@ func (s *service) Create(ctx context.Context, in *createRequest) (*entity, error
 func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*entity, error) {
 	if id == 0 {
 		return nil, xerror.NewXCode(ecode.ErrorBadRequest)
-	}
-	if err := in.Validate(); nil != err {
-		return nil, xerror.WrapStatus(err, xcode.RequestParamError)
 	}
 
 	record, err := pdao.NewVWUser().First(ctx, id, "UserRoles")
@@ -112,12 +115,12 @@ func (s *service) Modify(ctx context.Context, id uint, in *modifyRequest) (*enti
 	if len(in.Password) != 0 {
 		pwd, err := userutil.Sum(in.Password)
 		if nil != err {
-			return nil, xerror.Wrap(err, "生成密码失败")
+			return nil, xerror.WrapWithXCode(err, ecode.ErrorPasswordFailed)
 		}
 		record.Password = pwd
 	}
 
-	if err := pdao.NewUser().Update(ctx, record.ToUser(), roles); nil != err {
+	if err := pdao.NewUser().Update(ctx, record.ToUser(), genresFromRequest(in.Genres)); nil != err {
 		return nil, xerror.WrapWithXCode(err, ecode.ErrorSavedData)
 	}
 

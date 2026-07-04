@@ -4,10 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gomooth/pkg/http/restful"
 	"github.com/gomooth/utils/valutil"
+	"github.com/gomooth/xerror"
+	"github.com/gomooth/xerror/xcode"
 )
 
-type Controller struct {
-}
+type Controller struct{}
 
 func (c *Controller) Paginate(ctx *gin.Context) {
 	rru := restful.NewResponse(ctx)
@@ -36,6 +37,11 @@ func (c *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
+	if err := in.Validate(); nil != err {
+		rru.WithError(xerror.NewXCode(xcode.RequestParamError, err.Error()))
+		return
+	}
+
 	record, err := new(service).Create(ctx, &in)
 	if nil != err {
 		rru.WithError(err)
@@ -51,6 +57,11 @@ func (c *Controller) Modify(ctx *gin.Context) {
 	var in modifyRequest
 	if err := ctx.ShouldBindJSON(&in); nil != err {
 		rru.WithError(err)
+		return
+	}
+
+	if err := in.Validate(); nil != err {
+		rru.WithError(xerror.NewXCode(xcode.RequestParamError, err.Error()))
 		return
 	}
 

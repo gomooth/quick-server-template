@@ -19,17 +19,6 @@ type createRequest struct {
 	Genres    []uint8 `json:"genres"`
 }
 
-func (in *createRequest) GetGenres() []int8 {
-	res := make([]int8, 0)
-	for _, genre := range in.Genres {
-		if genre == 0 {
-			continue
-		}
-		res = append(res, int8(genre))
-	}
-	return res
-}
-
 func (in *createRequest) Validate() error {
 	if len(in.Account) == 0 || len(in.Genres) == 0 {
 		return xerror.New("帐号、类型 不能为空")
@@ -43,14 +32,20 @@ func (in *createRequest) Validate() error {
 }
 
 type modifyRequest struct {
-	createRequest
-
-	State int8 `json:"state"`
+	Account   string  `json:"account"`
+	Nickname  string  `json:"nickname"`
+	AvatarURL string  `json:"avatarUrl"`
+	Password  string  `json:"password"`
+	Genres    []uint8 `json:"genres"`
+	State     int8    `json:"state"`
 }
 
 func (in *modifyRequest) Validate() error {
-	if err := in.createRequest.Validate(); nil != err {
-		return err
+	if len(in.Account) == 0 {
+		return xerror.New("帐号不能为空")
+	}
+	if in.State != 0 && in.State != 1 {
+		return xerror.New("状态值不合法")
 	}
 
 	return nil

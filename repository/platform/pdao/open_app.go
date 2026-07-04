@@ -70,7 +70,7 @@ func (u *openApp) buildFilter(filter *pfilter.OpenAPP, db *gorm.DB) *gorm.DB {
 	}
 
 	if v := filter.State; v != nil {
-		db = db.Where("state= ?", v)
+		db = db.Where("state = ?", v)
 	}
 
 	return db

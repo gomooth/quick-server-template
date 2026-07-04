@@ -1,7 +1,8 @@
 package pfilter
 
 type User struct {
-	Account string
+	Account     string
+	AccountLike string
 }
 
 type UserLoginLog struct {

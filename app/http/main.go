@@ -5,6 +5,7 @@ import (
 	"server-api/app/http/internal/api/ping"
 	"server-api/app/http/internal/route"
 	"server-api/app/http/internal/route/admin"
+	"server-api/app/http/internal/route/user"
 
 	"github.com/gomooth/pkg/http/middleware"
 
@@ -22,9 +23,9 @@ func RouteRegister(router *gin.Engine) {
 	router.Any("/endpoint", middleware.HttpPrinter(global.Log), new(ping.Controller).Endpoint)
 
 	// 注册路由
-	route.RegisterAuth(router)
-	route.RegisterFile(router)
 	admin.Register(router)
+	user.Register(router)
+	route.RegisterFile(router)
 }
 
 // Release 释放资源

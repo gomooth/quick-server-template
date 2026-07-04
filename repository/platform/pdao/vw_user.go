@@ -58,6 +58,11 @@ func (u *vwUser) buildFilter(filter *pfilter.User, db *gorm.DB) *gorm.DB {
 
 	// 账号
 	if v := filter.Account; len(v) > 0 {
+		db = db.Where("account = ?", v)
+	}
+
+	// 账号
+	if v := filter.AccountLike; len(v) > 0 {
 		vv := fmt.Sprintf("%%%s%%", v)
 		db = db.Where("account like ?", vv)
 	}

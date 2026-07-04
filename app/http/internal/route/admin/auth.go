@@ -1,8 +1,8 @@
-package route
+package admin
 
 import (
 	"server-api/global"
-	"server-api/app/http/internal/api/auth"
+	"server-api/app/http/internal/api/admin/auth"
 
 	"github.com/gin-gonic/gin"
 
@@ -10,33 +10,31 @@ import (
 	"github.com/gomooth/pkg/http/middleware"
 )
 
-// RegisterAuth 注册鉴权路由
-func RegisterAuth(router *gin.Engine) {
+func registerAuth(router *gin.Engine) {
 	api := auth.Controller{}
 
+	// 公开：登录
 	ra := router.Group(
-		"/auth",
+		"/admin/auth",
 		middleware.RESTFul(global.ApiVersionLatest),
 	)
 	{
-		// 创建 Token
 		ra.POST("/tokens", api.Token)
 	}
 
+	// 认证：登出 + 改密
 	ra2 := router.Group(
-		"/auth",
+		"/admin/auth",
 		middleware.RESTFul(global.ApiVersionLatest),
 		middleware.JWTStatefulWith(
 			[]byte(global.Config.App.Secret),
 			global.NewRole,
-			jwtstore.NewMultiRedisStore(global.SessionStoreClient), // 多地登录
+			jwtstore.NewMultiRedisStore(global.SessionStoreClient),
 		),
-		middleware.WithRole(global.RoleUser),
+		middleware.WithRole(global.RoleSuper),
 	)
 	{
-		// 退出登陆
 		ra2.DELETE("/tokens", api.Logout)
-		// 修改密码
 		ra2.PUT("/passwords", api.ChangePwd)
 	}
 }

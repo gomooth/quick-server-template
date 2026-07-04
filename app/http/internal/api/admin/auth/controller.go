@@ -7,10 +7,11 @@ import (
 
 	"github.com/gomooth/pkg/http/jwt"
 	"github.com/gomooth/pkg/http/restful"
+	"github.com/gomooth/xerror"
+	"github.com/gomooth/xerror/xcode"
 )
 
-type Controller struct {
-}
+type Controller struct{}
 
 func (c *Controller) Token(ctx *gin.Context) {
 	rru := restful.NewResponse(
@@ -24,7 +25,16 @@ func (c *Controller) Token(ctx *gin.Context) {
 		return
 	}
 
-	token, err := new(service).Login(ctx, &in)
+	if err := in.Validate(); nil != err {
+		rru.WithError(xerror.NewXCode(xcode.RequestParamError, err.Error()))
+		return
+	}
+
+	token, err := new(service).Login(ctx, &in,
+		withClientIP(ctx.ClientIP()),
+		withUserAgent(ctx.Request.UserAgent()),
+		withReferer(ctx.Request.Referer()),
+	)
 	if err != nil {
 		rru.WithError(err)
 		return
@@ -53,6 +63,11 @@ func (c *Controller) ChangePwd(ctx *gin.Context) {
 	var in changePwdRequest
 	if err := ctx.ShouldBindJSON(&in); nil != err {
 		rru.WithError(err)
+		return
+	}
+
+	if err := in.Validate(); nil != err {
+		rru.WithError(xerror.NewXCode(xcode.RequestParamError, err.Error()))
 		return
 	}
 
