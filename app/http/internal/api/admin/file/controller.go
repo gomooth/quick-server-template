@@ -1,11 +1,10 @@
 package file
 
 import (
+	"server-api/app/http/internal/helper"
 	"server-api/global/ecode"
-	"server-api/service/lang"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gomooth/pkg/http/restful"
 	"github.com/gomooth/utils/valutil"
 	"github.com/gomooth/xerror"
 )
@@ -13,10 +12,7 @@ import (
 type Controller struct{}
 
 func (c *Controller) UploadPublic(ctx *gin.Context) {
-	rru := restful.NewResponse(
-		ctx,
-		restful.WithResponseErrorMsgHandler(lang.Handler()),
-	)
+	rru := helper.NewResponse(ctx, true)
 
 	file, _ := ctx.FormFile("file")
 
@@ -41,10 +37,7 @@ func (c *Controller) UploadPublic(ctx *gin.Context) {
 }
 
 func (c *Controller) UploadPublicBase64(ctx *gin.Context) {
-	rru := restful.NewResponse(
-		ctx,
-		restful.WithResponseErrorMsgHandler(lang.Handler()),
-	)
+	rru := helper.NewResponse(ctx, true)
 
 	var in base64Request
 	if err := ctx.ShouldBindJSON(&in); nil != err {
@@ -64,10 +57,7 @@ func (c *Controller) UploadPublicBase64(ctx *gin.Context) {
 }
 
 func (c *Controller) UploadPublicChunk(ctx *gin.Context) {
-	rru := restful.NewResponse(
-		ctx,
-		restful.WithResponseErrorMsgHandler(lang.Handler()),
-	)
+	rru := helper.NewResponse(ctx, true)
 
 	if err := ctx.Request.ParseMultipartForm(10 << 20); err != nil {
 		rru.WithError(xerror.New("分块文件太大"))
