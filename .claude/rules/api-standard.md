@@ -47,7 +47,7 @@ internal/api/{端口}/{模块}
 - **数据依赖校验**（需要通过 DAO 查库才能判定的校验）在 `service` 中完成
 - `controller` 向 `service` 传递已解析的参数，`service` 不做格式解析
 - `controller`，`service` 禁止有状态，应该通过 func args 显式传递
-- 多端口共用的 `service` 逻辑应该提升到根 `service` 下
+- 多端口共用的 `service` 逻辑应该提升到根 `domain` 下
 
 ## Controller 规则
 

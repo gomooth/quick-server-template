@@ -65,7 +65,7 @@
 │   │   ├── pfilter/       # 数据过滤器类型
 │   │   └── pmodel/        # 表实体模型
 │   └── shared/            # 共享类型
-├── service/               # 公共业务服务层（公开包）
+├── domain/                # 公共领域服务层（公开包）
 │   └── lang/              # 语言包初始化和 i18n 处理
 ├── storage/               # 存储目录（公共资源）
 │   ├── config/            # 配置文件
@@ -81,7 +81,7 @@
 ## 依赖方向
 
 ```
-app/ → boot/ → global/ → repository/ → service/
+app/ → boot/ → global/ → repository/ → domain/
 ```
 
 - 上层可以导入下层

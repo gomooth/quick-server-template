@@ -37,11 +37,11 @@ boot/             → 启动框架
 testhelper/       → 测试工具
 global/           → 基础设施（配置/日志/数据库/环境/错误码/Kafka常量）
 repository/       → 数据访问（Model/DAO/Cache/Attr/Filter）
-service/          → 公共业务服务（lang/i18n）
+domain/           → 公共领域服务（lang/i18n）
 storage/          → 配置/日志/语言/静态资源
 ```
 
-依赖方向：`app/ → boot/ → global/ → repository/ → service/`
+依赖方向：`app/ → boot/ → global/ → domain/ → repository/`
 
 ## 文档（按需加载）
 

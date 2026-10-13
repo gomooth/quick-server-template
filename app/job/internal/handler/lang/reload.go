@@ -3,8 +3,8 @@ package lang
 import (
 	"context"
 	"log/slog"
+	"server-api/domain/lang"
 	"server-api/global"
-	"server-api/service/lang"
 
 	"github.com/gomooth/pkg/job"
 )

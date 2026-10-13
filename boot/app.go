@@ -8,8 +8,8 @@ import (
 	"server-api/boot/internal/http"
 	"server-api/boot/internal/openapi"
 	"server-api/boot/internal/watcher"
+	"server-api/domain/lang"
 	"server-api/global"
-	"server-api/service/lang"
 	"time"
 
 	"github.com/gomooth/pkg/framework/app"

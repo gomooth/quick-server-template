@@ -3,7 +3,7 @@ package health
 import (
 	"net/http"
 
-	healthsvc "server-api/service/health"
+	healthsvc "server-api/domain/health"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gomooth/pkg/http/restful"

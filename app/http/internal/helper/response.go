@@ -1,7 +1,7 @@
 package helper
 
 import (
-	"server-api/service/lang"
+	"server-api/domain/lang"
 
 	"github.com/gin-gonic/gin"
 
