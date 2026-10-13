@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"server-api/global/kafka/topic"
 	"server-api/app/consumer/internal/helper"
+	"server-api/global/kafka/topic"
 	"server-api/testhelper"
 )
 

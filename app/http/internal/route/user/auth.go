@@ -1,8 +1,8 @@
 package user
 
 import (
-	"server-api/global"
 	"server-api/app/http/internal/api/user/auth"
+	"server-api/global"
 
 	"github.com/gin-gonic/gin"
 

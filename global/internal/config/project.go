@@ -29,8 +29,8 @@ type ProjectConfig struct {
 
 			// 签名调试（仅非生产环境使用）
 			SignDebugEnabled bool   `toml:"sign_debug_enabled"`
-			SignDebugAppID   string `toml:"sign_debug_app_id"`   // 默认 "sign-debugger"
-			SignDebugSecret  string `toml:"sign_debug_secret"`   // 默认 "sign-debugger-secret"
+			SignDebugAppID   string `toml:"sign_debug_app_id"` // 默认 "sign-debugger"
+			SignDebugSecret  string `toml:"sign_debug_secret"` // 默认 "sign-debugger-secret"
 		}
 	} `toml:"server"`
 

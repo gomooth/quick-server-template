@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"server-api/boot/internal/command"
 	jobapp "server-api/app/job"
+	"server-api/boot/internal/command"
 
 	"github.com/pkg/errors"
 )

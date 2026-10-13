@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"server-api/global"
 	"server-api/app/http/internal/api/admin/auth"
+	"server-api/global"
 
 	"github.com/gin-gonic/gin"
 

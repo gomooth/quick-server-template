@@ -3,8 +3,8 @@ package consumer
 import (
 	"context"
 	"log/slog"
-	"server-api/global"
 	"server-api/app/consumer"
+	"server-api/global"
 
 	"github.com/gomooth/pkg/mq"
 	mqredis "github.com/gomooth/pkg/mq/redis"

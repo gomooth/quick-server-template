@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"server-api/global"
 	"server-api/app/consumer"
+	"server-api/global"
 	"server-api/repository/platform/pmodel"
 
 	"github.com/gomooth/pkg/mq"
@@ -66,9 +66,9 @@ func (s *kafkaServer) failedHandler(ctx context.Context, msg mq.Message, err err
 
 	group, _ := msg.KafkaGroup()
 	record := &pmodel.FailedListener{
-		ConsumeGroup:  group,
-		Topic:         msg.Queue,
-		Msg:           string(msg.Data),
+		ConsumeGroup: group,
+		Topic:        msg.Queue,
+		Msg:          string(msg.Data),
 		FailedPayload: func() string {
 			payload := xerror.ParsePayload(err)
 			bs, _ := json.Marshal(payload)

@@ -1,10 +1,10 @@
 package http
 
 import (
-	"server-api/global"
 	"server-api/app/http/internal/api/health"
 	"server-api/app/http/internal/route/admin"
 	"server-api/app/http/internal/route/user"
+	"server-api/global"
 
 	"github.com/gomooth/pkg/http/middleware"
 
